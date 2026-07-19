@@ -84,7 +84,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             slug_city = slugify(city)
             slug_address = slugify(address)
             lang = self.country.lower()
-            
+
             # Map country codes to their localized store path segment
             path_mapping = {
                 "de": "filialen",
@@ -99,10 +99,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
             path_segment = path_mapping.get(lang, "filialen")
             tld = "com" if lang == "gb" else lang
-            
-            self.configuration_url = (
-                f"https://www.lidl.{tld}/s/{lang}-{self.country}/{path_segment}/{slug_city}/{slug_address}/"
-            )
+
+            self.configuration_url = f"https://www.lidl.{tld}/s/{lang}-{self.country}/{path_segment}/{slug_city}/{slug_address}/"
         else:
             tld = "com" if self.country.lower() == "gb" else self.country.lower()
             self.configuration_url = f"https://www.lidl.{tld}/"
