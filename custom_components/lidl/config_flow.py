@@ -613,9 +613,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 errors["base"] = "mfa_failed"
 
         schema = vol.Schema({vol.Required("mfa_code"): str})
-        return self.async_show_form(
-            step_id="mfa", data_schema=schema, errors=errors
-        )
+        return self.async_show_form(step_id="mfa", data_schema=schema, errors=errors)
 
     async def async_step_manual_token(
         self, user_input: dict[str, Any] | None = None
@@ -638,9 +636,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
     def _save_token(self, refresh_token: str) -> config_entries.ConfigFlowResult:
         """Persist refresh_token in config entry data and close the options flow."""
         new_data = {**self._config_entry.data, CONF_REFRESH_TOKEN: refresh_token}
-        self.hass.config_entries.async_update_entry(
-            self._config_entry, data=new_data
-        )
+        self.hass.config_entries.async_update_entry(self._config_entry, data=new_data)
         return self.async_create_entry(title="", data=self._config_entry.options)
 
     # ------------------------------------------------------------------
@@ -707,7 +703,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         m_action = re.search(r'<form[^>]+action=["\']([^"\']+)["\']', resp.text)
         if m_action:
             raw = m_action.group(1).replace("&amp;", "&")
-            form_action = raw if raw.startswith("http") else f"https://accounts.lidl.com{raw}"
+            form_action = (
+                raw if raw.startswith("http") else f"https://accounts.lidl.com{raw}"
+            )
 
         post_headers = {
             **headers,
@@ -758,11 +756,15 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                         mfa_csrf = m.group(1)
                         break
                 mfa_action = full_url
-                m_mfa = re.search(r'<form[^>]+action=["\']([^"\']+)["\']', mfa_resp.text)
+                m_mfa = re.search(
+                    r'<form[^>]+action=["\']([^"\']+)["\']', mfa_resp.text
+                )
                 if m_mfa:
                     raw = m_mfa.group(1).replace("&amp;", "&")
                     mfa_action = (
-                        raw if raw.startswith("http") else f"https://accounts.lidl.com{raw}"
+                        raw
+                        if raw.startswith("http")
+                        else f"https://accounts.lidl.com{raw}"
                     )
                 return {
                     "mfa_required": True,
@@ -777,7 +779,11 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 else f"https://accounts.lidl.com{location}"
             )
             resp2 = session.get(
-                abs_url, headers=headers, impersonate="chrome", timeout=20, allow_redirects=False
+                abs_url,
+                headers=headers,
+                impersonate="chrome",
+                timeout=20,
+                allow_redirects=False,
             )
 
         raise RuntimeError(
@@ -828,7 +834,11 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 else f"https://accounts.lidl.com{location}"
             )
             resp = session.get(
-                abs_url, headers=headers, impersonate="chrome", timeout=20, allow_redirects=False
+                abs_url,
+                headers=headers,
+                impersonate="chrome",
+                timeout=20,
+                allow_redirects=False,
             )
 
         raise RuntimeError(
@@ -864,5 +874,3 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             "refresh_token": res_json["refresh_token"],
             "access_token": res_json["access_token"],
         }
-
-
