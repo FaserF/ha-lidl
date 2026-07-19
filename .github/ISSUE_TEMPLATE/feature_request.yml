@@ -1,0 +1,62 @@
+name: Feature Request
+description: Suggest an idea or enhancement for the Lidl Weekly Offers Home Assistant integration
+title: '[Feature]: '
+labels: ['enhancement', 'triage']
+assignees:
+  - FaserF
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before submitting
+        - 🔍 Search [existing feature requests](https://github.com/FaserF/ha-lidl/issues?q=label%3Aenhancement) to avoid duplicates
+        - 📖 Check the [Documentation Site](https://faserf.github.io/ha-lidl/)
+        - 🔗 View the integration: [![Open your Home Assistant instance and show the lidl integration.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=lidl)
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: Is your feature request related to a problem? Describe it clearly.
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature_area
+    attributes:
+      label: Feature Area
+      description: Which area of the integration does this feature relate to?
+      options:
+        - Current week offers tracking
+        - Offers preview / upcoming week
+        - Categories / brands parsing
+        - Device / entity properties
+        - Configuration / options
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request here.
+    validations:
+      required: false

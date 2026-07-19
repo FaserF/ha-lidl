@@ -1,0 +1,45 @@
+{
+  "config": {
+    "flow_title": "Setup Lidl weekly offers",
+    "step": {
+      "user": {
+        "description": "Select your country and type your city or postal code to search for nearby Lidl stores.",
+        "data": {
+          "country": "Country Code (e.g., DE, AT, ES, FR, NL, PL)",
+          "search_query": "City or Postal Code"
+        }
+      },
+      "select_store": {
+        "description": "Select your Lidl store from the search results below.",
+        "data": {
+          "store_key": "Select Store"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This Lidl store is already configured.",
+      "no_stores_found": "No Lidl stores found matching your query."
+    },
+    "error": {
+      "search_failed": "Failed to query the Lidl store API.",
+      "no_stores_found": "No Lidl stores found matching your query. Please try another search.",
+      "unknown": "Unknown error occurred."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Lidl weekly offers",
+        "data": {
+          "update_interval": "Update Interval (hours, min 1, max 24)"
+        }
+      }
+    }
+  },
+  "issues": {
+    "connection_error": {
+      "title": "Error communicating with Lidl API",
+      "description": "The integration is unable to fetch offers. Please check the logs."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "domain": "lidl",
+  "name": "Lidl Weekly Offers",
+  "codeowners": [
+    "@FaserF"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/FaserF/ha-lidl",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/FaserF/ha-lidl/issues",
+  "requirements": [
+    "curl_cffi>=0.15.0",
+    "pydantic>=2.13.4",
+    "lidl-plus>=0.3.5"
+  ],
+  "version": "0.0.1"
+}

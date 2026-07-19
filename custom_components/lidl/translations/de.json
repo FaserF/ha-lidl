@@ -1,0 +1,93 @@
+{
+  "config": {
+    "flow_title": "Lidl wöchentliche Angebote einrichten",
+    "step": {
+      "user": {
+        "description": "Wähle dein Land aus und gib deine Stadt oder Postleitzahl ein, um nach Lidl-Filialen in der Nähe zu suchen. Aktiviere optional das Kontrollkästchen unten, um dich bei Lidl Plus für Coupons und Kassenbons anzumelden.",
+        "data": {
+          "country": "Ländercode (z. B. DE, AT, ES, FR, NL, PL)",
+          "search_query": "Stadt oder Postleitzahl",
+          "login_to_lidl_plus": "Bei Lidl Plus anmelden (Optional)"
+        }
+      },
+      "login": {
+        "description": "Gib deine Lidl Plus E-Mail/Telefonnummer und dein Passwort ein. Die Integration meldet dich automatisch an.\n\nFalls dein Konto **Zwei-Faktor-Authentifizierung (MFA)** verwendet, wirst du im nächsten Schritt nach dem Bestätigungscode gefragt.\n\nFalls die automatische Anmeldung fehlschlägt, nutze **Refresh Token manuell eingeben** — siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "data": {
+          "email": "Lidl Plus E-Mail / Telefonnummer",
+          "password": "Lidl Plus Passwort"
+        }
+      },
+      "mfa": {
+        "description": "Ein Bestätigungscode wurde an dein registriertes Telefon oder deine E-Mail gesendet. Bitte gib ihn unten ein.",
+        "data": {
+          "mfa_code": "Bestätigungscode"
+        }
+      },
+      "manual_token": {
+        "description": "Gib den Refresh Token ein, den du mit dem `lidl-plus` CLI-Tool erhalten hast. Siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "data": {
+          "refresh_token": "Refresh Token"
+        }
+      },
+      "select_store": {
+        "description": "Wähle deine Lidl-Filiale aus den Suchergebnissen aus.",
+        "data": {
+          "store_key": "Filiale auswählen"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Diese Lidl-Filiale ist bereits konfiguriert.",
+      "no_stores_found": "Keine Lidl-Filialen für deine Suchanfrage gefunden."
+    },
+    "error": {
+      "search_failed": "Fehler bei der Abfrage der Lidl-Filiale API.",
+      "no_stores_found": "Keine Lidl-Filialen gefunden. Bitte versuche eine andere Suche.",
+      "auth_failed": "Anmeldung bei Lidl Plus fehlgeschlagen. Bitte überprüfe deine Zugangsdaten oder gib den Refresh Token manuell ein.",
+      "mfa_failed": "MFA-Verifizierung fehlgeschlagen. Bitte überprüfe den Code und versuche es erneut.",
+      "invalid_token": "Der Refresh Token scheint ungültig zu sein (zu kurz). Bitte versuche es erneut.",
+      "unknown": "Unbekannter Fehler aufgetreten."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lidl wöchentliche Angebote konfigurieren",
+        "data": {
+          "update_interval": "Update-Intervall (Stunden, Min 1, Max 168)",
+          "action": "Aktion"
+        }
+      },
+      "login": {
+        "description": "Gib deine Lidl Plus E-Mail/Telefonnummer und dein Passwort ein. Die Integration meldet dich automatisch an.\n\nFalls MFA aktiviert ist, wirst du im nächsten Schritt nach dem Code gefragt.\n\nFalls die Anmeldung fehlschlägt, nutze **Refresh Token manuell eingeben** — siehe README.",
+        "data": {
+          "email": "Lidl Plus E-Mail / Telefonnummer",
+          "password": "Lidl Plus Passwort"
+        }
+      },
+      "mfa": {
+        "description": "Ein Bestätigungscode wurde an dein registriertes Telefon oder deine E-Mail gesendet. Bitte gib ihn unten ein.",
+        "data": {
+          "mfa_code": "Bestätigungscode"
+        }
+      },
+      "manual_token": {
+        "description": "Gib den Refresh Token ein, den du mit dem `lidl-plus` CLI-Tool erhalten hast. Siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "data": {
+          "refresh_token": "Refresh Token"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.",
+      "mfa_failed": "MFA-Verifizierung fehlgeschlagen. Bitte überprüfe den Code und versuche es erneut.",
+      "invalid_token": "Der Refresh Token scheint ungültig zu sein (zu kurz). Bitte versuche es erneut."
+    }
+  },
+  "issues": {
+    "connection_error": {
+      "title": "Fehler bei der Kommunikation mit der Lidl API",
+      "description": "Die Integration kann keine Angebote abrufen. Bitte prüfe die Logs."
+    }
+  }
+}

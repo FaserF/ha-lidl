@@ -1,0 +1,93 @@
+{
+  "config": {
+    "flow_title": "Setup Lidl weekly offers",
+    "step": {
+      "user": {
+        "description": "Select your country and type your city or postal code to search for nearby Lidl stores. Optionally, check the box below to log in to Lidl Plus for coupons and receipts.",
+        "data": {
+          "country": "Country Code (e.g., DE, AT, ES, FR, NL, PL)",
+          "search_query": "City or Postal Code",
+          "login_to_lidl_plus": "Log in to Lidl Plus (Optional)"
+        }
+      },
+      "login": {
+        "description": "Enter your Lidl Plus email/phone and password. The integration will log in automatically.\n\nIf your account uses **two-factor authentication (MFA)**, you will be asked for the verification code in the next step.\n\nIf automatic login fails, use **Enter refresh token manually** instead — see the README for how to obtain a refresh token using the `lidl-plus` CLI.",
+        "data": {
+          "email": "Lidl Plus Email / Phone",
+          "password": "Lidl Plus Password"
+        }
+      },
+      "mfa": {
+        "description": "A verification code was sent to your registered phone or email. Please enter it below.",
+        "data": {
+          "mfa_code": "Verification Code"
+        }
+      },
+      "manual_token": {
+        "description": "Enter the refresh token you obtained via the `lidl-plus` CLI tool. See the README for step-by-step instructions.",
+        "data": {
+          "refresh_token": "Refresh Token"
+        }
+      },
+      "select_store": {
+        "description": "Select your Lidl store from the search results below.",
+        "data": {
+          "store_key": "Select Store"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This Lidl store is already configured.",
+      "no_stores_found": "No Lidl stores found matching your query."
+    },
+    "error": {
+      "search_failed": "Failed to query the Lidl store API.",
+      "no_stores_found": "No Lidl stores found matching your query. Please try another search.",
+      "auth_failed": "Authentication with Lidl Plus failed. Please check your credentials or try entering the refresh token manually.",
+      "mfa_failed": "MFA verification failed. Please check the code and try again.",
+      "invalid_token": "The refresh token appears to be invalid (too short). Please try again.",
+      "unknown": "Unknown error occurred."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Lidl weekly offers",
+        "data": {
+          "update_interval": "Update Interval (hours, min 1, max 168)",
+          "action": "Action"
+        }
+      },
+      "login": {
+        "description": "Enter your Lidl Plus email/phone and password. The integration will log in automatically.\n\nIf your account uses MFA, you will be asked for the verification code next.\n\nIf automatic login fails, use **Enter refresh token manually** — see the README.",
+        "data": {
+          "email": "Lidl Plus Email / Phone",
+          "password": "Lidl Plus Password"
+        }
+      },
+      "mfa": {
+        "description": "A verification code was sent to your registered phone or email. Please enter it below.",
+        "data": {
+          "mfa_code": "Verification Code"
+        }
+      },
+      "manual_token": {
+        "description": "Enter the refresh token you obtained via the `lidl-plus` CLI tool. See the README for step-by-step instructions.",
+        "data": {
+          "refresh_token": "Refresh Token"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Authentication failed. Please check your credentials.",
+      "mfa_failed": "MFA verification failed. Please check the code and try again.",
+      "invalid_token": "The refresh token appears to be invalid (too short). Please try again."
+    }
+  },
+  "issues": {
+    "connection_error": {
+      "title": "Error communicating with Lidl API",
+      "description": "The integration is unable to fetch offers. Please check the logs."
+    }
+  }
+}
