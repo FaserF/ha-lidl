@@ -59,8 +59,53 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
         )
 
-        # Construct configuration URL dynamically
-        self.configuration_url = f"https://www.lidl.{self.country.lower()}/"
+        # Construct configuration URL dynamically pointing directly to the store/prospekt page
+        city = entry.data.get("city", "")
+        address = entry.data.get("address", "")
+
+        if city and address:
+            import re
+
+            def slugify(text: str) -> str:
+                # Replace German umlauts
+                text = text.lower()
+                text = (
+                    text.replace("ä", "ae")
+                    .replace("ö", "oe")
+                    .replace("ü", "ue")
+                    .replace("ß", "ss")
+                )
+                # Remove special chars and replace spaces/slashes with dashes
+                text = re.sub(r"[^a-z0-9\s-]", "", text)
+                text = re.sub(r"[\s/]+", "-", text)
+                # Remove trailing or double dashes
+                return re.sub(r"-+", "-", text).strip("-")
+
+            slug_city = slugify(city)
+            slug_address = slugify(address)
+            lang = self.country.lower()
+            
+            # Map country codes to their localized store path segment
+            path_mapping = {
+                "de": "filialen",
+                "at": "filialen",
+                "ch": "filialen",
+                "es": "tiendas",
+                "it": "punti-vendita",
+                "fr": "supermarches",
+                "nl": "filialen",
+                "pl": "sklepy",
+                "gb": "stores",
+            }
+            path_segment = path_mapping.get(lang, "filialen")
+            tld = "com" if lang == "gb" else lang
+            
+            self.configuration_url = (
+                f"https://www.lidl.{tld}/s/{lang}-{self.country}/{path_segment}/{slug_city}/{slug_address}/"
+            )
+        else:
+            tld = "com" if self.country.lower() == "gb" else self.country.lower()
+            self.configuration_url = f"https://www.lidl.{tld}/"
 
         super().__init__(
             hass,
