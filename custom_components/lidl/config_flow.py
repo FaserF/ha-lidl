@@ -499,6 +499,8 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         self._auth_url: str = ""
         self._nonce: str = ""
         self._state: str = ""
+        self._selected_country: str = config_entry.data.get(CONF_COUNTRY, "DE")
+        self._mfa_session: dict[str, Any] = {}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
