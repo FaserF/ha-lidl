@@ -1,6 +1,6 @@
 [project]
 name = "ha-lidl"
-version = "2026.7.1-dev0"
+version = "1.0.1-dev0"
 description = "Home Assistant integration for Lidl weekly offers."
 authors = [
     {name = "FaserF", email = "github@fabiseitz.de"}

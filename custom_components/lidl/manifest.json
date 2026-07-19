@@ -13,5 +13,5 @@
     "pydantic>=2.13.4",
     "lidl-plus>=0.3.5"
   ],
-  "version": "0.0.1"
+  "version": "1.0.1-dev0"
 }
