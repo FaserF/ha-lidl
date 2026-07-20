@@ -85,9 +85,7 @@ async def _async_discover_stores(hass: core.HomeAssistant) -> None:
     ha_country: str = (getattr(hass.config, "country", None) or "DE").upper()
     country = ha_country if ha_country in _SUPPORTED_COUNTRIES else "DE"
 
-    _LOGGER.debug(
-        "Lidl discovery: searching stores (country: %s)", country
-    )
+    _LOGGER.debug("Lidl discovery: searching stores (country: %s)", country)
 
     from .api import LidlAPIClient, Store
 
