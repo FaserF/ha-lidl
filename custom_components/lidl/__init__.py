@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant import config_entries, core
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
@@ -21,6 +22,7 @@ from .const import (
 from .coordinator import LidlDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # Lidl Plus API supported country codes
 _SUPPORTED_COUNTRIES = {"DE", "AT", "ES", "FR", "NL", "PL"}
@@ -64,15 +66,17 @@ async def _async_discover_stores(hass: core.HomeAssistant) -> None:
     """Search for the nearest Lidl store and trigger integration discovery."""
     ha_lat = hass.config.latitude
     ha_lon = hass.config.longitude
-    location_name: str = hass.config.location_name or ""
 
     if not ha_lat or not ha_lon:
         _LOGGER.debug("Lidl discovery: HA home location not set, skipping")
         return
 
-    query = location_name.strip() if location_name.strip() else ""
+    # Build search query: ZIP code is most reliable for the store API.
+    zip_code: str = getattr(hass.config, "zip_code", "") or ""
+    location_name: str = hass.config.location_name or ""
+    query = zip_code.strip() or location_name.strip()
     if not query:
-        _LOGGER.debug("Lidl discovery: no location_name configured, skipping")
+        _LOGGER.debug("Lidl discovery: no ZIP code or location_name configured, skipping")
         return
 
     # Derive country from HA system setting; fall back to "DE" if unsupported

@@ -208,6 +208,14 @@ pytest
 
 ---
 
+## 🛒 Other Supermarket Integrations
+
+If you like this integration, you might also be interested in my other supermarket integrations for Home Assistant:
+
+- [EDEKA Offers](https://github.com/FaserF/ha-edeka)
+- [REWE Offers](https://github.com/FaserF/ha-rewe)
+- [Aldi Offers](https://github.com/FaserF/ha-aldi)
+
 ## 📄 License
 
 This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for details.
