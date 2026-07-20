@@ -57,6 +57,39 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._login_email: str = ""
         self._login_password: str = ""
         self._mfa_session: dict[str, Any] = {}
+        self._discovery_data: dict[str, Any] = {}
+
+    async def async_step_integration_discovery(
+        self, discovery_info: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        """Handle a discovered Lidl store (triggered by location-based auto-discovery)."""
+        store_key = str(discovery_info.get(CONF_STORE_KEY, "")).strip()
+        if not store_key:
+            return self.async_abort(reason="no_stores_found")
+
+        await self.async_set_unique_id(f"lidl_{store_key}")
+        self._abort_if_unique_id_configured()
+
+        self._discovery_data = discovery_info
+        self._selected_country = discovery_info.get(CONF_COUNTRY, "DE")
+        self.context["title_placeholders"] = {
+            "name": discovery_info.get("name") or store_key,
+            "city": discovery_info.get("city") or "",
+            "address": discovery_info.get("address") or "",
+        }
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Confirm adding the discovered Lidl store."""
+        if user_input is not None:
+            store_key = self._discovery_data.get(CONF_STORE_KEY, "")
+            name = self._discovery_data.get("name") or store_key
+            title = f"Lidl {name}"
+            return self.async_create_entry(title=title, data=self._discovery_data)
+
+        return self.async_show_form(step_id="discovery_confirm")
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

@@ -34,6 +34,10 @@
         "data": {
           "store_key": "Filiale auswählen"
         }
+      },
+      "discovery_confirm": {
+        "title": "Lidl-Filiale in der Nähe gefunden",
+        "description": "Eine Lidl-Filiale wurde in der Nähe deines Home Assistant Standorts gefunden:\n\n**{name}**\n{address}, {city}\n\nMöchtest du sie hinzufügen?"
       }
     },
     "abort": {

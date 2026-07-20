@@ -14,6 +14,10 @@
         "data": {
           "store_key": "Select Store"
         }
+      },
+      "discovery_confirm": {
+        "title": "Lidl store found nearby",
+        "description": "A Lidl store was discovered near your Home Assistant location:\n\n**{name}**\n{address}, {city}\n\nWould you like to add it?"
       }
     },
     "abort": {
