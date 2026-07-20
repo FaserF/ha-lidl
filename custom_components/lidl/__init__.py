@@ -76,7 +76,9 @@ async def _async_discover_stores(hass: core.HomeAssistant) -> None:
     location_name: str = hass.config.location_name or ""
     query = zip_code.strip() or location_name.strip()
     if not query:
-        _LOGGER.debug("Lidl discovery: no ZIP code or location_name configured, skipping")
+        _LOGGER.debug(
+            "Lidl discovery: no ZIP code or location_name configured, skipping"
+        )
         return
 
     # Derive country from HA system setting; fall back to "DE" if unsupported
