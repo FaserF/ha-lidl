@@ -268,17 +268,33 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)
         resp.raise_for_status()
 
-        # 2. Parse CSRF token and form action from HTML
-        csrf = ""
+        # 2. Parse form action and all hidden form inputs
+        login_data: dict[str, str] = {
+            "EmailOrPhone": email,
+            "Password": password,
+            "RememberMe": "false",
+        }
+        for hidden_match in re.finditer(
+            r'<input[^>]+type=["\']hidden["\'][^>]*>', resp.text, re.IGNORECASE
+        ):
+            input_html = hidden_match.group(0)
+            name_m = re.search(r'name=["\']([^"\']+)["\']', input_html, re.IGNORECASE)
+            val_m = re.search(r'value=["\']([^"\']*)["\']', input_html, re.IGNORECASE)
+            if name_m:
+                login_data[name_m.group(1)] = val_m.group(1) if val_m else ""
+
+        # Fallback regex for CSRF token if hidden input tag parsing missed it
+        if "__RequestVerificationToken" not in login_data:
+            for pattern in [
+                r'name=["\']__RequestVerificationToken["\']\s+value=["\']([^"\']+)',
+                r'value=["\']([^"\']+)["\']\s+name=["\']__RequestVerificationToken',
+            ]:
+                m = re.search(pattern, resp.text)
+                if m:
+                    login_data["__RequestVerificationToken"] = m.group(1)
+                    break
+
         form_action = "https://accounts.lidl.com/account/login"
-        for pattern in [
-            r'name=["\']__RequestVerificationToken["\']\s+value=["\']([^"\']+)',
-            r'value=["\']([^"\']+)["\']\s+name=["\']__RequestVerificationToken',
-        ]:
-            m = re.search(pattern, resp.text)
-            if m:
-                csrf = m.group(1)
-                break
         m_action = re.search(r'<form[^>]+action=["\']([^"\']+)["\']', resp.text)
         if m_action:
             raw = m_action.group(1).replace("&amp;", "&")
@@ -291,15 +307,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": resp.url,
         }
-
-        # 3. POST email + password
-        login_data: dict[str, str] = {
-            "EmailOrPhone": email,
-            "Password": password,
-            "RememberMe": "false",
-        }
-        if csrf:
-            login_data["__RequestVerificationToken"] = csrf
 
         resp2 = session.post(
             form_action,
@@ -725,16 +732,32 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)
         resp.raise_for_status()
 
-        csrf = ""
+        # Parse form action and all hidden form inputs
+        login_data: dict[str, str] = {
+            "EmailOrPhone": email,
+            "Password": password,
+            "RememberMe": "false",
+        }
+        for hidden_match in re.finditer(
+            r'<input[^>]+type=["\']hidden["\'][^>]*>', resp.text, re.IGNORECASE
+        ):
+            input_html = hidden_match.group(0)
+            name_m = re.search(r'name=["\']([^"\']+)["\']', input_html, re.IGNORECASE)
+            val_m = re.search(r'value=["\']([^"\']*)["\']', input_html, re.IGNORECASE)
+            if name_m:
+                login_data[name_m.group(1)] = val_m.group(1) if val_m else ""
+
+        if "__RequestVerificationToken" not in login_data:
+            for pattern in [
+                r'name=["\']__RequestVerificationToken["\']\s+value=["\']([^"\']+)',
+                r'value=["\']([^"\']+)["\']\s+name=["\']__RequestVerificationToken',
+            ]:
+                m = re.search(pattern, resp.text)
+                if m:
+                    login_data["__RequestVerificationToken"] = m.group(1)
+                    break
+
         form_action = "https://accounts.lidl.com/account/login"
-        for pattern in [
-            r'name=["\']__RequestVerificationToken["\']\s+value=["\']([^"\']+)',
-            r'value=["\']([^"\']+)["\']\s+name=["\']__RequestVerificationToken',
-        ]:
-            m = re.search(pattern, resp.text)
-            if m:
-                csrf = m.group(1)
-                break
         m_action = re.search(r'<form[^>]+action=["\']([^"\']+)["\']', resp.text)
         if m_action:
             raw = m_action.group(1).replace("&amp;", "&")
@@ -747,13 +770,6 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": resp.url,
         }
-        login_data: dict[str, str] = {
-            "EmailOrPhone": email,
-            "Password": password,
-            "RememberMe": "false",
-        }
-        if csrf:
-            login_data["__RequestVerificationToken"] = csrf
 
         resp2 = session.post(
             form_action,

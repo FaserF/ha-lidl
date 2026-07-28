@@ -134,7 +134,7 @@ If Option 1 fails or gets stuck on MFA, you can capture the code and exchange it
 Copy the URL below, replace `COUNTRY` with your country code in uppercase (e.g. `DE`) and `LANG` with your lowercase language code (e.g. `de`), and open it in your desktop web browser:
 
 ```
-https://accounts.lidl.com/connect/authorize?client_id=LidlPlusNativeClient&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback&response_type=code&scope=openid%20profile%20offline_access%20lpprofile%20lpapis&code_challenge=FqIYVVYB0E6McLBFgG679hzdviy-I6EOUTRnA4COpss&code_challenge_method=S256&Country=COUNTRY&language=LANG-COUNTRY
+https://accounts.lidl.com/connect/authorize?client_id=LidlPlusNativeClient&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback&response_type=code&scope=openid%20profile%20offline_access%20lpprofile%20lpapis&code_challenge=FqIYVVYB0E6McLBFgG679hzdviy-I6EOUTRnA4COpss&code_challenge_method=S256&Country=COUNTRY&language=LANG-COUNTRY&nonce=12345678901234567890123456789012&state=12345678901234567890123456789012
 ```
 
 #### Step 2: Authenticate and Capture the Redirect
