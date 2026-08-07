@@ -25,7 +25,35 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # Lidl Plus API supported country codes
-_SUPPORTED_COUNTRIES = {"DE", "AT", "ES", "FR", "NL", "PL"}
+_SUPPORTED_COUNTRIES = {
+    "AT",
+    "BE",
+    "BG",
+    "CH",
+    "CZ",
+    "DE",
+    "DK",
+    "EE",
+    "ES",
+    "FI",
+    "FR",
+    "GB",
+    "GR",
+    "HR",
+    "HU",
+    "IE",
+    "IT",
+    "LT",
+    "LU",
+    "LV",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SE",
+    "SI",
+    "SK",
+}
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

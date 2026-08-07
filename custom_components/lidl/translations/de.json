@@ -5,7 +5,7 @@
       "user": {
         "description": "Wähle dein Land aus und gib deine Stadt oder Postleitzahl ein, um nach Lidl-Filialen in der Nähe zu suchen. Aktiviere optional das Kontrollkästchen unten, um dich bei Lidl Plus für Coupons und Kassenbons anzumelden.",
         "data": {
-          "country": "Ländercode (z. B. DE, AT, ES, FR, NL, PL)",
+          "country": "Ländercode (z. B. DE, AT, BE, ES, FR, NL, PL)",
           "search_query": "Stadt oder Postleitzahl",
           "login_to_lidl_plus": "Bei Lidl Plus anmelden (Optional)"
         }

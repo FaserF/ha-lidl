@@ -88,6 +88,29 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 
 ---
 
+### 🌍 Supported Countries
+
+This integration supports **27 European countries** operating on the Lidl Plus API infrastructure:
+
+| Country | Code | Country | Code | Country | Code |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🇦🇹 Austria | `AT` | 🇧🇪 Belgium | `BE` | 🇧🇬 Bulgaria | `BG` |
+| 🇨🇭 Switzerland | `CH` | 🇨🇿 Czech Republic | `CZ` | 🇩🇪 Germany | `DE` |
+| 🇩🇰 Denmark | `DK` | 🇪🇪 Estonia | `EE` | 🇪🇸 Spain | `ES` |
+| 🇫🇮 Finland | `FI` | 🇫🇷 France | `FR` | 🇬🇧 United Kingdom | `GB` |
+| 🇬🇷 Greece | `GR` | 🇭🇷 Croatia | `HR` | 🇭🇺 Hungary | `HU` |
+| 🇮🇪 Ireland | `IE` | 🇮🇹 Italy | `IT` | 🇱🇹 Lithuania | `LT` |
+| 🇱🇺 Luxembourg | `LU` | 🇱🇻 Latvia | `LV` | 🇳🇱 Netherlands | `NL` |
+| 🇵🇱 Poland | `PL` | 🇵🇹 Portugal | `PT` | 🇷🇴 Romania | `RO` |
+| 🇸🇪 Sweden | `SE` | 🇸🇮 Slovenia | `SI` | 🇸🇰 Slovakia | `SK` |
+
+#### ❌ Unsupported Countries & Technical Reasons
+
+- **🇺🇸 United States (`US`)**: Lidl US operates an entirely independent infrastructure/app system ("myLidl") separate from the European Lidl Plus mobile backend (`tickets.lidlplus.com`). The European API endpoints return HTTP 404 for US requests.
+- **🇨🇦 / 🇦🇺 / 🇳🇿 / 🇯🇵 / 🇨🇳 / Non-European countries**: Lidl does not operate stores or Lidl Plus mobile services in these regions.
+
+---
+
 ## ⚙️ Configuration
 
 1. Navigate to **Settings > Devices & Services** in Home Assistant.

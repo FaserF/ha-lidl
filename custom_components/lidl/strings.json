@@ -5,7 +5,7 @@
       "user": {
         "description": "Select your country and type your city or postal code to search for nearby Lidl stores. Optionally, check the box below to log in to Lidl Plus for coupons and receipts.",
         "data": {
-          "country": "Country Code (e.g., DE, AT, ES, FR, NL, PL)",
+          "country": "Country Code (e.g., DE, AT, BE, ES, FR, NL, PL)",
           "search_query": "City or Postal Code",
           "login_to_lidl_plus": "Log in to Lidl Plus (Optional)"
         }

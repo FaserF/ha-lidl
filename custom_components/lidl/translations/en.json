@@ -5,7 +5,7 @@
       "user": {
         "description": "Select your country and type your city or postal code to search for nearby Lidl stores.",
         "data": {
-          "country": "Country Code (e.g., DE, AT, ES, FR, NL, PL)",
+          "country": "Country Code (e.g., DE, AT, BE, ES, FR, NL, PL)",
           "search_query": "City or Postal Code"
         }
       },

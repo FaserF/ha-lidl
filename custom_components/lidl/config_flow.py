@@ -29,16 +29,37 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_COUNTRIES = {
-    "DE": "Germany",
     "AT": "Austria",
+    "BE": "Belgium",
+    "BG": "Bulgaria",
+    "CH": "Switzerland",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DK": "Denmark",
+    "EE": "Estonia",
     "ES": "Spain",
+    "FI": "Finland",
     "FR": "France",
+    "GB": "United Kingdom",
+    "GR": "Greece",
+    "HR": "Croatia",
+    "HU": "Hungary",
+    "IE": "Ireland",
+    "IT": "Italy",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
     "NL": "Netherlands",
     "PL": "Poland",
+    "PT": "Portugal",
+    "RO": "Romania",
+    "SE": "Sweden",
+    "SI": "Slovenia",
+    "SK": "Slovakia",
 }
 
 
-class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for Lidl."""
 
     VERSION = 1

@@ -63,6 +63,45 @@ async def test_flow_user_setup(hass: HomeAssistant) -> None:
         }
 
 
+async def test_flow_user_setup_belgium(hass: HomeAssistant) -> None:
+    """Test user setup step for Belgium (BE)."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    mock_store = Store(
+        storeKey="BE0101",
+        name="Lidl Brussels",
+        address="Rue de la Loi 1",
+        postalCode="1000",
+        locality="Brussels",
+    )
+    with patch(
+        "custom_components.lidl.api.LidlAPIClient.search_stores",
+        return_value=[mock_store],
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_COUNTRY: "BE", "search_query": "Brussels"},
+        )
+        assert result["type"] == "form"
+        assert result["step_id"] == "select_store"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_STORE_KEY: "BE0101"},
+        )
+        assert result["type"] == "create_entry"
+        assert result["title"] == "Lidl Lidl Brussels"
+        assert result["data"] == {
+            CONF_COUNTRY: "BE",
+            CONF_STORE_KEY: "BE0101",
+            "address": "Rue de la Loi 1",
+            "city": "Brussels",
+            "name": "Lidl Brussels",
+            "postal_code": "1000",
+        }
+
+
 async def test_flow_already_configured(hass: HomeAssistant) -> None:
     """Test config flow aborts when the same store is already configured."""
     entry = MockConfigEntry(

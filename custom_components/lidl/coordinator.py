@@ -94,8 +94,22 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "it": "punti-vendita",
                 "fr": "supermarches",
                 "nl": "filialen",
+                "be": "filialen",
                 "pl": "sklepy",
                 "gb": "stores",
+                "ie": "stores",
+                "pt": "lojas",
+                "ro": "magazine",
+                "cz": "prodejny",
+                "sk": "predajne",
+                "hu": "aruhazak",
+                "hr": "trgovine",
+                "si": "trgovine",
+                "bg": "magazini",
+                "gr": "katastimata",
+                "dk": "butikker",
+                "se": "butiker",
+                "fi": "myymalat",
             }
             path_segment = path_mapping.get(lang, "filialen")
             tld = "com" if lang == "gb" else lang
