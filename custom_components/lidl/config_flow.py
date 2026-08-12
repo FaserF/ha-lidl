@@ -132,6 +132,17 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                     errors["base"] = "no_stores_found"
                 else:
                     self._search_results = results
+                    # Automatically reuse existing Lidl Plus refresh token if already logged in for another store
+                    existing_token = None
+                    for entry in self._async_current_entries():
+                        token = entry.data.get(CONF_REFRESH_TOKEN)
+                        if token:
+                            existing_token = token
+                            break
+
+                    if existing_token and not login_to_lidl_plus:
+                        self._refresh_token = existing_token
+
                     if login_to_lidl_plus:
                         return await self.async_step_login()
                     return await self.async_step_select_store()
@@ -610,6 +621,8 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             action = user_input.get("action", "save")
             if action == "login":
                 return await self.async_step_login()
+            if action == "manual_token":
+                return await self.async_step_manual_token()
             if action == "logout":
                 new_data = {
                     k: v
@@ -630,13 +643,17 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
-        is_logged_in = bool(self._config_entry.data.get(CONF_REFRESH_TOKEN))
+        existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
+        is_logged_in = bool(existing_token)
 
         action_choices: dict[str, str] = {"save": "Save settings"}
         if is_logged_in:
+            action_choices["manual_token"] = "Update Lidl Plus Token / Web Login"
+            action_choices["login"] = "Re-login to Lidl Plus (Credentials)"
             action_choices["logout"] = "Log out of Lidl Plus"
         else:
-            action_choices["login"] = "Log in to Lidl Plus"
+            action_choices["login"] = "Log in to Lidl Plus (Credentials)"
+            action_choices["manual_token"] = "Web Login / Enter Refresh Token"
 
         options_schema = vol.Schema(
             {
@@ -763,7 +780,10 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
 
         login_url = self._build_auth_url()
 
-        schema = vol.Schema({vol.Required("refresh_token"): str})
+        existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
+        schema = vol.Schema(
+            {vol.Required("refresh_token", default=existing_token): str}
+        )
         return self.async_show_form(
             step_id="manual_token",
             data_schema=schema,

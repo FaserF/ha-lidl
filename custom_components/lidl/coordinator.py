@@ -14,7 +14,6 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers import storage
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
-from lidlplus import LidlPlusApi
 
 from .api import LidlAPIClient, Offer
 from .const import (
@@ -306,81 +305,156 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._force_update = True
         self._backoff_until = None
 
-    def _get_lidl_plus_api(self) -> LidlPlusApi:
-        """Instantiate a LidlPlusApi client using the stored refresh token."""
-        lang = self.country.lower()
-        return LidlPlusApi(
-            language=lang, country=self.country, refresh_token=self.refresh_token
+    def _get_access_and_id_token(self) -> tuple[str, str]:
+        """Exchange stored refresh_token for a fresh access_token and id_token via curl_cffi."""
+        import base64
+
+        from curl_cffi import requests
+
+        if not self.refresh_token:
+            raise ValueError("Refresh token missing")
+
+        auth_header = base64.b64encode(b"LidlPlusNativeClient:secret").decode()
+        res = requests.post(
+            "https://accounts.lidl.com/connect/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token,
+            },
+            headers={
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "LidlPlus/17.0.5 Android okhttp/4.12.0",
+            },
+            impersonate="chrome110",
+            timeout=15,
         )
+        res.raise_for_status()
+        data = res.json()
+        return data["access_token"], data.get("id_token", "")
 
     def _fetch_personal_data(self) -> dict[str, Any]:
-        """Synchronously fetch coupons, last receipt and loyalty ID from Lidl Plus."""
+        """Fetch coupons, last receipt and loyalty ID from Lidl Plus using curl_cffi."""
+        import base64
+        import json
+
+        from curl_cffi import requests
+
         result: dict[str, Any] = {}
+        if not self.refresh_token:
+            return result
+
         try:
-            api = self._get_lidl_plus_api()
+            access_token, id_token = self._get_access_and_id_token()
+
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Country": self.country,
+                "Accept-Language": f"{self.country.lower()}-{self.country}",
+                "App-Version": "17.0.5",
+                "Operating-System": "Android",
+                "App": "com.lidlplus.app",
+            }
+
+            # --- Loyalty ID (Extracted from JWT id_token) ---
+            loyalty_id = None
+            if id_token:
+                try:
+                    parts = id_token.split(".")
+                    if len(parts) >= 2:
+                        payload_b64 = parts[1]
+                        payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+                        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+                        loyalty_id = (
+                            payload.get("sub")
+                            or payload.get("loyalty_id")
+                            or payload.get("number")
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    _LOGGER.warning(
+                        "Failed to parse JWT id_token for loyalty ID: %s", exc
+                    )
+
+            result["loyalty_id"] = str(loyalty_id) if loyalty_id else None
 
             # --- Coupons ---
             try:
-                raw_coupons = api.coupons()
+                r_coupons = requests.get(
+                    "https://coupons.lidlplus.com/app/api/v1/promotionslist",
+                    headers=headers,
+                    impersonate="chrome110",
+                    timeout=15,
+                )
                 coupon_list = []
-                for c in raw_coupons:
-                    if isinstance(c, dict):
-                        coupon_list.append(
-                            {
-                                "id": c.get("id"),
-                                "title": c.get("title") or c.get("description"),
-                                "description": c.get("description"),
-                                "discount": c.get("discountValue") or c.get("discount"),
-                                "start_date": c.get("startDate"),
-                                "end_date": c.get("endDate"),
-                                "activated": c.get("activated", False),
-                            }
-                        )
-                    else:
-                        coupon_list.append(
-                            {
-                                "id": getattr(c, "id", None),
-                                "title": getattr(c, "title", None)
-                                or getattr(c, "description", None),
-                                "description": getattr(c, "description", None),
-                                "discount": getattr(c, "discount_value", None)
-                                or getattr(c, "discount", None),
-                                "start_date": str(getattr(c, "start_date", "")),
-                                "end_date": str(getattr(c, "end_date", "")),
-                                "activated": getattr(c, "activated", False),
-                            }
-                        )
+                if r_coupons.status_code == 200:
+                    c_data = r_coupons.json()
+                    sections = c_data.get("sections", [])
+                    for s in sections:
+                        for c in s.get("coupons", []) + s.get("promotions", []):
+                            cid = c.get("id") or c.get("promotionId")
+                            discount_info = c.get("discount", {})
+                            discount_val = (
+                                discount_info.get("title")
+                                if isinstance(discount_info, dict)
+                                else str(discount_info)
+                            )
+                            validity = c.get("validity", {})
+                            start_date = (
+                                validity.get("start")
+                                if isinstance(validity, dict)
+                                else None
+                            )
+                            end_date = (
+                                validity.get("end")
+                                if isinstance(validity, dict)
+                                else None
+                            )
+                            coupon_list.append(
+                                {
+                                    "id": cid,
+                                    "title": c.get("title") or c.get("description"),
+                                    "description": c.get("description"),
+                                    "discount": discount_val,
+                                    "start_date": start_date[:10]
+                                    if start_date
+                                    else None,
+                                    "end_date": end_date[:10] if end_date else None,
+                                    "activated": c.get("isActivated", False)
+                                    or c.get("activated", False),
+                                }
+                            )
                 result["coupons"] = coupon_list
             except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("Failed to fetch Lidl Plus coupons: %s", exc)
                 result["coupons"] = []
 
-            # --- Loyalty ID ---
+            # --- Last Receipt (Tickets) ---
             try:
-                loyalty = api.loyalty_id
-                if callable(loyalty):
-                    result["loyalty_id"] = loyalty()
-                else:
-                    result["loyalty_id"] = loyalty
-            except Exception as exc:  # noqa: BLE001
-                _LOGGER.warning("Failed to fetch Lidl Plus loyalty ID: %s", exc)
-                result["loyalty_id"] = None
-
-            # --- Last Receipt ---
-            try:
-                tickets = api.tickets()
-                if tickets:
-                    first_ticket = tickets[0]
-                    tid = (
-                        first_ticket.get("id")
-                        if isinstance(first_ticket, dict)
-                        else getattr(first_ticket, "id", None)
-                    )
-                    if tid:
-                        latest = api.ticket(tid)
-                        if isinstance(latest, dict):
-                            items = []
-                            for item in latest.get("itemsLine", []):
+                r_tickets = requests.get(
+                    f"https://tickets.lidlplus.com/api/v2/{self.country}/tickets?pageNumber=1",
+                    headers=headers,
+                    impersonate="chrome110",
+                    timeout=15,
+                )
+                if r_tickets.status_code == 200:
+                    t_data = r_tickets.json()
+                    tickets_list = t_data.get("tickets", [])
+                    if tickets_list:
+                        latest = tickets_list[0]
+                        tid = latest.get("id")
+                        # Fetch single ticket details
+                        r_single = requests.get(
+                            f"https://tickets.lidlplus.com/api/v2/{self.country}/tickets/{tid}",
+                            headers=headers,
+                            impersonate="chrome110",
+                            timeout=15,
+                        )
+                        items = []
+                        store_name = None
+                        if r_single.status_code == 200:
+                            s_data = r_single.json()
+                            store_name = s_data.get("store", {}).get("name")
+                            for item in s_data.get("itemsLine", []):
                                 items.append(
                                     {
                                         "name": item.get("description"),
@@ -388,25 +462,20 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         "price": item.get("currentUnitPrice"),
                                     }
                                 )
-                            result["last_receipt"] = {
-                                "id": latest.get("id"),
-                                "date": latest.get("date"),
-                                "store": latest.get("store", {}).get("name"),
-                                "total": latest.get("totalAmount"),
-                                "currency": latest.get("currency"),
-                                "items": items,
-                            }
-                        else:
-                            result["last_receipt"] = {
-                                "id": getattr(latest, "id", None),
-                                "date": str(getattr(latest, "date", "")),
-                                "store": getattr(
-                                    getattr(latest, "store", None), "name", None
-                                ),
-                                "total": getattr(latest, "total_amount", None),
-                                "currency": getattr(latest, "currency", None),
-                                "items": [],
-                            }
+                        currency = latest.get("currency", {})
+                        curr_code = (
+                            currency.get("code")
+                            if isinstance(currency, dict)
+                            else str(currency)
+                        )
+                        result["last_receipt"] = {
+                            "id": tid,
+                            "date": latest.get("date"),
+                            "store": store_name or latest.get("storeCode"),
+                            "total": latest.get("totalAmount"),
+                            "currency": curr_code,
+                            "items": items,
+                        }
                     else:
                         result["last_receipt"] = None
                 else:
@@ -416,37 +485,59 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 result["last_receipt"] = None
 
         except Exception as exc:  # noqa: BLE001
-            _LOGGER.error("Failed to initialise Lidl Plus API client: %s", exc)
+            _LOGGER.error("Failed to fetch Lidl Plus personal data: %s", exc)
 
         return result
 
     def activate_all_coupons(self) -> int:
         """Activate all available (non-activated) Lidl Plus coupons. Returns count activated."""
-        api = self._get_lidl_plus_api()
-        activated = 0
-        try:
-            coupons = api.coupons()
-            for coupon in coupons:
-                if isinstance(coupon, dict):
-                    cid = coupon.get("id") or coupon.get("couponId")
-                    is_activated = coupon.get("activated", False) or coupon.get(
-                        "isActivated", False
-                    )
-                else:
-                    cid = getattr(coupon, "id", None) or getattr(
-                        coupon, "coupon_id", None
-                    )
-                    is_activated = getattr(coupon, "activated", False) or getattr(
-                        coupon, "is_activated", False
-                    )
+        from curl_cffi import requests
 
-                if cid and not is_activated:
-                    try:
-                        api.activate_coupon(str(cid))
-                        activated += 1
-                        _LOGGER.info("Activated Lidl Plus coupon %s", cid)
-                    except Exception as exc:  # noqa: BLE001
-                        _LOGGER.warning("Failed to activate coupon %s: %s", cid, exc)
+        activated = 0
+        if not self.refresh_token:
+            return activated
+
+        try:
+            access_token, _ = self._get_access_and_id_token()
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Country": self.country,
+                "Accept-Language": f"{self.country.lower()}-{self.country}",
+                "App-Version": "17.0.5",
+                "Operating-System": "Android",
+                "App": "com.lidlplus.app",
+            }
+
+            r_coupons = requests.get(
+                "https://coupons.lidlplus.com/app/api/v1/promotionslist",
+                headers=headers,
+                impersonate="chrome110",
+                timeout=15,
+            )
+            if r_coupons.status_code == 200:
+                c_data = r_coupons.json()
+                for s in c_data.get("sections", []):
+                    for c in s.get("coupons", []) + s.get("promotions", []):
+                        cid = c.get("id") or c.get("promotionId")
+                        is_act = c.get("isActivated", False) or c.get(
+                            "activated", False
+                        )
+                        if cid and not is_act:
+                            try:
+                                r_act = requests.post(
+                                    f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
+                                    headers=headers,
+                                    impersonate="chrome110",
+                                    timeout=15,
+                                )
+                                if r_act.status_code in (200, 201, 204):
+                                    activated += 1
+                                    _LOGGER.info("Activated Lidl Plus coupon %s", cid)
+                            except Exception as exc:  # noqa: BLE001
+                                _LOGGER.warning(
+                                    "Failed to activate coupon %s: %s", cid, exc
+                                )
         except Exception as exc:  # noqa: BLE001
-            _LOGGER.error("Failed to fetch coupons for activation: %s", exc)
+            _LOGGER.error("Failed to activate Lidl Plus coupons: %s", exc)
+
         return activated
