@@ -32,12 +32,17 @@ async def async_setup_entry(
     ]
 
     if coordinator.refresh_token:
-        entities += [
-            LidlActivatedCouponsSensor(coordinator),
-            LidlAvailableCouponsSensor(coordinator),
-            LidlLastReceiptSensor(coordinator),
-            LidlLoyaltyIdSensor(coordinator),
-        ]
+        account_created_set = hass.data[DOMAIN].setdefault(
+            "_created_account_entities", set()
+        )
+        if coordinator.account_key not in account_created_set:
+            account_created_set.add(coordinator.account_key)
+            entities += [
+                LidlActivatedCouponsSensor(coordinator),
+                LidlAvailableCouponsSensor(coordinator),
+                LidlLastReceiptSensor(coordinator),
+                LidlLoyaltyIdSensor(coordinator),
+            ]
 
     async_add_entities(entities, update_before_add=False)
 

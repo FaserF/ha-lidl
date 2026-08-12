@@ -29,9 +29,14 @@ async def async_setup_entry(
     coordinator: LidlDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     if coordinator.refresh_token:
-        async_add_entities(
-            [LidlLoyaltyCardQrImage(hass, coordinator)], update_before_add=False
+        account_images_set = hass.data[DOMAIN].setdefault(
+            "_created_account_images", set()
         )
+        if coordinator.account_key not in account_images_set:
+            account_images_set.add(coordinator.account_key)
+            async_add_entities(
+                [LidlLoyaltyCardQrImage(hass, coordinator)], update_before_add=False
+            )
 
 
 class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], ImageEntity):

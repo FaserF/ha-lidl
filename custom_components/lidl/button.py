@@ -27,7 +27,12 @@ async def async_setup_entry(
     entities: list[Any] = [LidlForceUpdateButton(coordinator)]
 
     if coordinator.refresh_token:
-        entities.append(LidlActivateCouponsButton(coordinator))
+        account_buttons_set = hass.data[DOMAIN].setdefault(
+            "_created_account_buttons", set()
+        )
+        if coordinator.account_key not in account_buttons_set:
+            account_buttons_set.add(coordinator.account_key)
+            entities.append(LidlActivateCouponsButton(coordinator))
 
     async_add_entities(entities, update_before_add=False)
 
