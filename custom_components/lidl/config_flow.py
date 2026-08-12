@@ -339,8 +339,8 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         )
 
         # Follow redirects manually, watching for the callback or MFA page
+        location = resp2.headers.get("Location", "")
         for _ in range(10):
-            location = resp2.headers.get("Location", "")
             if not location:
                 break
             if location.startswith("com.lidlplus.app://"):
@@ -398,6 +398,7 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                 timeout=20,
                 allow_redirects=False,
             )
+            location = resp2.headers.get("Location", "")
 
         raise RuntimeError(
             f"Login flow did not reach callback. Last status: {resp2.status_code}"
@@ -801,8 +802,8 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             allow_redirects=False,
         )
 
+        location = resp2.headers.get("Location", "")
         for _ in range(10):
-            location = resp2.headers.get("Location", "")
             if not location:
                 break
             if location.startswith("com.lidlplus.app://"):
@@ -857,6 +858,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 timeout=20,
                 allow_redirects=False,
             )
+            location = resp2.headers.get("Location", "")
 
         raise RuntimeError(
             f"Login flow did not reach callback. Last status: {resp2.status_code}"
