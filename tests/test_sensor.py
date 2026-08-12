@@ -164,7 +164,6 @@ async def test_last_receipt_sensor(hass: HomeAssistant) -> None:
             "total_amount_formatted": "11,07 €",
             "articles_count": 8,
             "coupons_used_count": 1,
-            "items": [{"name": "Milk", "quantity": 1, "price": 1.29}],
         },
     }
 

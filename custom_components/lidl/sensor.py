@@ -284,7 +284,6 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
     _attr_icon = "mdi:receipt"
     _attr_has_entity_name = True
     _attr_name = "Last Receipt"
-    _unrecorded_attributes = frozenset({"items"})
 
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
@@ -325,7 +324,6 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
             "total_amount_formatted": receipt.get("total_amount_formatted"),
             "articles_count": receipt.get("articles_count"),
             "coupons_used_count": receipt.get("coupons_used_count"),
-            "items": receipt.get("items", []),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 

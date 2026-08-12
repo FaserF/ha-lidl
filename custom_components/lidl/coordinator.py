@@ -485,10 +485,12 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 c.get("isOnlineShop", False) or sec_name == "OnlineShop"
                             )
                             avail = c.get("availability", {})
-                            avail_text = (
-                                avail.get("text") if isinstance(avail, dict) else None
+                            apologize_status = (
+                                avail.get("apologizeStatus", False)
+                                if isinstance(avail, dict)
+                                else False
                             )
-                            if avail_text and "nicht mehr verfügbar" in avail_text:
+                            if apologize_status:
                                 continue
 
                             coupon_list.append(
@@ -529,26 +531,35 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if tickets_list:
                         latest = tickets_list[0]
                         tid = latest.get("id")
-                        # Fetch single ticket details
-                        r_single = requests.get(
-                            f"https://tickets.lidlplus.com/api/v2/{self.country}/tickets/{tid}",
-                            headers=headers,
-                            impersonate="chrome110",
-                            timeout=15,
-                        )
-                        items = []
+                        store_code = latest.get("storeCode")
                         store_name = None
-                        if r_single.status_code == 200:
-                            s_data = r_single.json()
-                            store_name = s_data.get("store", {}).get("name")
-                            for item in s_data.get("itemsLine", []):
-                                items.append(
-                                    {
-                                        "name": item.get("description"),
-                                        "quantity": item.get("quantity"),
-                                        "price": item.get("currentUnitPrice"),
-                                    }
+                        if store_code:
+                            try:
+                                r_store = requests.get(
+                                    f"https://stores.lidlplus.com/api/v1/{self.country}/{store_code}",
+                                    headers=headers,
+                                    impersonate="chrome110",
+                                    timeout=5,
                                 )
+                                if r_store.status_code == 200:
+                                    st_data = r_store.json()
+                                    s_name = st_data.get("name")
+                                    s_locality = st_data.get("locality")
+                                    if (
+                                        s_name
+                                        and s_locality
+                                        and s_locality not in s_name
+                                    ):
+                                        store_name = f"{s_locality} - {s_name}"
+                                    else:
+                                        store_name = s_name or s_locality
+                            except Exception as exc:  # noqa: BLE001
+                                _LOGGER.debug(
+                                    "Failed to resolve store name for %s: %s",
+                                    store_code,
+                                    exc,
+                                )
+
                         currency = latest.get("currency", {})
                         curr_code = (
                             currency.get("code")
@@ -569,14 +580,13 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         result["last_receipt"] = {
                             "id": tid,
                             "date": latest.get("date"),
-                            "store": store_name or latest.get("storeCode"),
-                            "store_code": latest.get("storeCode"),
+                            "store": store_name or store_code,
+                            "store_code": store_code,
                             "total": total_val,
                             "currency": curr_code,
                             "total_amount_formatted": formatted_total,
-                            "articles_count": latest.get("articlesCount") or len(items),
+                            "articles_count": latest.get("articlesCount", 0),
                             "coupons_used_count": latest.get("couponsUsedCount", 0),
-                            "items": items,
                         }
                     else:
                         result["last_receipt"] = None

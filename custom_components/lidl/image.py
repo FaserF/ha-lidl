@@ -100,13 +100,13 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
         )
 
     def _generate_qr_png(self, text: str) -> bytes:
-        """Generate PNG bytes of QR code for given loyalty ID."""
+        """Generate high-contrast 400x400 PNG bytes of QR code optimized for cashier scanners."""
         import qrcode
 
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=10,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=12,
             border=4,
         )
         qr.add_data(text)
