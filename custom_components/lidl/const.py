@@ -2,7 +2,7 @@
 
 DOMAIN = "lidl"
 ATTRIBUTION = "Data provided by Lidl Plus API"
-PLATFORMS = ["sensor", "button"]
+PLATFORMS = ["sensor", "button", "image"]
 
 CONF_STORE_KEY = "store_key"
 CONF_COUNTRY = "country"
