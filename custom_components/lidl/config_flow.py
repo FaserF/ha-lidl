@@ -19,6 +19,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
+    CONF_SKIP_SPECIAL_COUPONS,
     CONF_STORE_KEY,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -643,6 +644,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_AUTO_ACTIVATE_COUPONS: bool(
                         user_input.get(CONF_AUTO_ACTIVATE_COUPONS, False)
                     ),
+                    CONF_SKIP_SPECIAL_COUPONS: bool(
+                        user_input.get(CONF_SKIP_SPECIAL_COUPONS, True)
+                    ),
                 },
             )
 
@@ -651,6 +655,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         )
         current_auto_activate = self._config_entry.options.get(
             CONF_AUTO_ACTIVATE_COUPONS, False
+        )
+        current_skip_special = self._config_entry.options.get(
+            CONF_SKIP_SPECIAL_COUPONS, True
         )
         existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
         is_logged_in = bool(existing_token)
@@ -681,6 +688,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         if is_logged_in:
             schema_dict[
                 vol.Optional(CONF_AUTO_ACTIVATE_COUPONS, default=current_auto_activate)
+            ] = bool
+            schema_dict[
+                vol.Optional(CONF_SKIP_SPECIAL_COUPONS, default=current_skip_special)
             ] = bool
 
         schema_dict[vol.Required("action", default="save")] = vol.In(action_choices)

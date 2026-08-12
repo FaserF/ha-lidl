@@ -20,6 +20,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
+    CONF_SKIP_SPECIAL_COUPONS,
     CONF_STORE_KEY,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -45,6 +46,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.country: str = config[CONF_COUNTRY]
         self.refresh_token: str | None = config.get(CONF_REFRESH_TOKEN)
         self.auto_activate_coupons: bool = config.get(CONF_AUTO_ACTIVATE_COUPONS, False)
+        self.skip_special_coupons: bool = config.get(CONF_SKIP_SPECIAL_COUPONS, True)
         self.config_entry = entry
 
         # Anti-ban state
@@ -505,6 +507,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     "type": c_type,
                                     "section": sec_name,
                                     "is_online_shop": is_online,
+                                    "is_special": c.get("isSpecial", False),
                                 }
                             )
                 result["coupons"] = coupon_list
@@ -621,11 +624,24 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         is_act = c.get("isActivated", False) or c.get(
                             "activated", False
                         )
+                        is_special = c.get("isSpecial", False)
+
                         if cid and not is_act:
+                            if is_special and self.skip_special_coupons:
+                                _LOGGER.info(
+                                    "Skipping special selection coupon %s based on configuration",
+                                    cid,
+                                )
+                                continue
+
                             try:
+                                # For special selection coupons when skip_special_coupons is False,
+                                # we send selection payload {} to select default available option.
+                                payload: dict[str, Any] = {} if is_special else {}
                                 r_act = requests.post(
                                     f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
                                     headers=headers,
+                                    json=payload,
                                     impersonate="chrome110",
                                     timeout=15,
                                 )

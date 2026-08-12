@@ -30,19 +30,22 @@ It groups all sensors under a single market device and implements advanced lock-
   - **Offers**: Current week's discounted items count, with attributes detailing titles, brands, categories, prices (original & discount), packaging units, unit prices, and direct links to product images.
   - **Offers Preview**: Next week's upcoming deals.
 - **🔐 Lidl Plus Features** *(requires login)*:
-  - **Coupons**: Number of available and activated coupons on your account.
-  - **Activate All Coupons**: A button entity that activates every available coupon on your Lidl Plus account with a single tap.
-  - **Last Receipt**: Shows your most recent Lidl purchase total and date.
-  - **Loyalty ID**: Your Lidl Plus loyalty card number (barcode ID).
+  - **Loyalty Card QR Code Image (`image`)**: A dynamic 300x300 PNG QR Code entity rendering your 17-digit barcode for scanning directly at the checkout. Includes state attributes for your full profile (`user_name`, `email`, `country`, `registration_date`).
+  - **Activated & Available Coupons**: Sensors for currently active and available coupons, broken down by store vs. online shop coupons.
+  - **Activate All Coupons**: A button entity to activate every available coupon with a single tap.
+  - **Last Receipt**: Shows total amount, date, store code, article count, and redeemed coupon counts.
+- **📱 Single Lidl Plus Account Device per Country**:
+  - All account-level entities (`Loyalty Card QR Code`, `Activated Coupons`, `Available Coupons`, `Last Receipt`, `Activate All Coupons`) are grouped under a dedicated **Lidl Plus Account (DE)** device.
+  - Features a direct **Visit Lidl Plus Account** button taking you directly to your web account management portal.
 - **🛡️ Rate-Limiting & Anti-Ban Protections**:
   - **First-Fetch Optimisation**: Skips jitter sleep on initial setup so the first refresh completes instantly.
   - **Lock Queueing**: A domain-wide lock ensures concurrent updates run sequentially.
   - **Random Jitter**: Introduces a 5–15 second delay between requests.
   - **Restart-Resistance**: Saves parsed data to Home Assistant's JSON storage cache to survive restarts without hitting the API.
   - **Exponential Backoff**: Backs off for up to 24 hours on 403/429 blocks, and minutes on network failures.
-- **⚙️ Device-Based Grouping**:
-  - All sensors and buttons are automatically grouped under a main Lidl Store device.
-  - **Visit Lidl Store Button**: The device registry provides a dynamic configuration URL that takes you straight to your specific country's Lidl website.
+- **⚙️ Store-Based Device Grouping**:
+  - Store-specific offer sensors (`Offers`, `Offers Preview`, `Force Update`) are grouped under their respective Lidl Store device.
+  - **Visit Lidl Store Button**: The store device registry provides a dynamic configuration URL pointing directly to your local store page.
 - **🎛️ Manual Force Update**:
   - A **Force Update** button entity allows manually triggering an API update on demand (disabled by default to avoid accidental triggers).
 - **🔍 Diagnostic Downloads**:
@@ -271,6 +274,8 @@ You can adjust settings at any time:
 2. Find **Lidl Weekly Offers** and click **Configure**.
 3. Options available:
    - **Update Interval**: How often to poll the Lidl API (1–168 hours, default: 24 h).
+   - **Automatically activate coupons in background**: Toggle automatic background activation of store coupons upon refresh.
+   - **Skip special product selection coupons**: Choose whether to skip coupons requiring product choices or automatically select default products.
    - **Log in to Lidl Plus** / **Log out of Lidl Plus**: Manage your Lidl Plus authentication.
 
 ---

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 from typing import Any
@@ -56,6 +57,10 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
         self._store_key = coordinator.store_key
         self._account_key = coordinator.account_key
         self._attr_unique_id = f"lidl_{self._account_key}_loyalty_card_qr"
+        # Use a static internal security token for HA image proxy derived from unique_id (NOT OAuth token)
+        self._attr_access_token = hashlib.sha256(
+            self._attr_unique_id.encode()
+        ).hexdigest()[:32]
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._account_key)},
             name=f"Lidl Plus Account ({coordinator.country})",

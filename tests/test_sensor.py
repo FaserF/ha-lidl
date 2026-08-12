@@ -133,6 +133,8 @@ async def test_personal_coupon_sensors(hass: HomeAssistant) -> None:
         assert avail_state.state == "2"
         assert avail_state.attributes["store_coupons_count"] == 1
         assert avail_state.attributes["online_coupons_count"] == 1
+        assert avail_state.attributes["special_coupons_count"] == 0
+        assert avail_state.attributes["standard_coupons_count"] == 2
 
 
 async def test_last_receipt_sensor(hass: HomeAssistant) -> None:

@@ -212,7 +212,15 @@ class LidlAvailableCouponsSensor(
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
     _attr_name = "Available Coupons"
-    _unrecorded_attributes = frozenset({"coupons", "store_coupons", "online_coupons"})
+    _unrecorded_attributes = frozenset(
+        {
+            "coupons",
+            "store_coupons",
+            "online_coupons",
+            "special_coupons",
+            "standard_coupons",
+        }
+    )
 
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
@@ -248,12 +256,19 @@ class LidlAvailableCouponsSensor(
         available = self._available_coupons
         store_coupons = [c for c in available if not c.get("is_online_shop", False)]
         online_coupons = [c for c in available if c.get("is_online_shop", False)]
+        special_coupons = [c for c in available if c.get("is_special", False)]
+        standard_coupons = [c for c in available if not c.get("is_special", False)]
+
         return {
             "coupons": available,
             "store_coupons": store_coupons,
             "online_coupons": online_coupons,
+            "special_coupons": special_coupons,
+            "standard_coupons": standard_coupons,
             "store_coupons_count": len(store_coupons),
             "online_coupons_count": len(online_coupons),
+            "special_coupons_count": len(special_coupons),
+            "standard_coupons_count": len(standard_coupons),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 
