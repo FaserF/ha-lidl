@@ -388,26 +388,61 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "App": "com.lidlplus.app",
             }
 
-            # --- Loyalty ID (Extracted from JWT id_token) ---
+            # --- Loyalty ID & Customer Profile (Extracted from JWT access_token & id_token) ---
             loyalty_id = None
-            if id_token:
+            user_name = None
+            user_email = None
+            user_country = None
+            reg_date = None
+
+            # Try parsing access_token first (contains name, given_name, family_name, email, etc.)
+            for token_str in [access_token, id_token]:
+                if not token_str:
+                    continue
                 try:
-                    parts = id_token.split(".")
+                    parts = token_str.split(".")
                     if len(parts) >= 2:
                         payload_b64 = parts[1]
                         payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
                         payload = json.loads(base64.urlsafe_b64decode(payload_b64))
-                        loyalty_id = (
-                            payload.get("sub")
-                            or payload.get("loyalty_id")
-                            or payload.get("number")
-                        )
+
+                        if not loyalty_id:
+                            loyalty_id = (
+                                payload.get("sub")
+                                or payload.get("loyalty_id")
+                                or payload.get("number")
+                            )
+
+                        if not user_name:
+                            given = payload.get("given_name") or payload.get("name", "")
+                            family = payload.get("family_name", "")
+                            if given or family:
+                                user_name = f"{given} {family}".strip()
+
+                        if not user_email:
+                            user_email = payload.get("email")
+
+                        if not user_country:
+                            user_country = payload.get(
+                                "address_country"
+                            ) or payload.get("country")
+
+                        if not reg_date:
+                            reg_date = payload.get("registration_date") or payload.get(
+                                "registrationDate"
+                            )
                 except Exception as exc:  # noqa: BLE001
                     _LOGGER.warning(
-                        "Failed to parse JWT id_token for loyalty ID: %s", exc
+                        "Failed to parse JWT token for user profile: %s", exc
                     )
 
             result["loyalty_id"] = str(loyalty_id) if loyalty_id else None
+            result["user_profile"] = {
+                "user_name": user_name,
+                "email": user_email,
+                "country": user_country,
+                "registration_date": reg_date,
+            }
 
             # --- Coupons ---
             try:

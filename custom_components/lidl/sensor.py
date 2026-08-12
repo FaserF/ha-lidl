@@ -41,7 +41,6 @@ async def async_setup_entry(
                 LidlActivatedCouponsSensor(coordinator),
                 LidlAvailableCouponsSensor(coordinator),
                 LidlLastReceiptSensor(coordinator),
-                LidlLoyaltyIdSensor(coordinator),
             ]
 
     async_add_entities(entities, update_before_add=False)
@@ -321,52 +320,4 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
         return (
             self.coordinator.data is not None
             and "last_receipt" in self.coordinator.data
-        )
-
-
-class LidlLoyaltyIdSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEntity):
-    """Represents the Lidl Plus loyalty card ID."""
-
-    _attr_icon = "mdi:card-account-details"
-    _attr_has_entity_name = True
-    _attr_name = "Loyalty Card ID"
-
-    def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
-        """Initialize sensor."""
-        super().__init__(coordinator)
-        self._account_key = coordinator.account_key
-        self._attr_unique_id = f"lidl_{self._account_key}_loyalty_id"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._account_key)},
-            name=f"Lidl Plus Account ({coordinator.country})",
-            manufacturer="Lidl",
-            model="Lidl Plus Customer Account",
-            configuration_url=coordinator.account_configuration_url,
-        )
-
-    @property
-    def native_value(self) -> str | None:
-        """Return the loyalty card ID."""
-        if not self.coordinator.data:
-            return None
-        return self.coordinator.data.get("loyalty_id")
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return customer profile attributes."""
-        data = self.coordinator.data or {}
-        profile = data.get("user_profile") or {}
-        return {
-            "user_name": profile.get("user_name"),
-            "email": profile.get("email"),
-            "country": profile.get("country"),
-            "registration_date": profile.get("registration_date"),
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-        }
-
-    @property
-    def available(self) -> bool:
-        """Return True if coordinator has data."""
-        return (
-            self.coordinator.data is not None and "loyalty_id" in self.coordinator.data
         )
