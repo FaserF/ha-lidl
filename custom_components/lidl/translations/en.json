@@ -3,11 +3,35 @@
     "flow_title": "Setup Lidl weekly offers",
     "step": {
       "user": {
-        "description": "Select your country and type your city or postal code to search for nearby Lidl stores.",
+        "description": "Select your country and type your city or postal code to search for nearby Lidl stores. Optionally check the box below to log in to Lidl Plus for coupons and receipts.",
         "data": {
           "country": "Country Code (e.g., DE, AT, BE, ES, FR, NL, PL)",
-          "search_query": "City or Postal Code"
+          "search_query": "City or Postal Code",
+          "login_to_lidl_plus": "Log in to Lidl Plus (Optional)"
         }
+      },
+      "login": {
+        "description": "Enter your Lidl Plus email/phone number and password. The integration will attempt automatic login.\n\nIf automatic login fails (e.g. due to Captcha protection), you will be directed to Web Login / Token entry.",
+        "data": {
+          "email": "Lidl Plus Email / Phone",
+          "password": "Lidl Plus Password",
+          "use_manual_token": "Use Refresh Token / Web Login"
+        }
+      },
+      "mfa": {
+        "description": "A verification code has been sent to your registered phone or email. Please enter it below.",
+        "data": {
+          "mfa_code": "Verification Code"
+        }
+      },
+      "manual_token": {
+        "description": "Automatic login was blocked (Captcha protection).\n\n**Option A — Automatic Web Login:**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Log in with your credentials — the browser will automatically send the code back to Home Assistant.\n3. You will see \"Login successful\" in the browser and can close the tab.\n\n**Option B — CLI:**\nRun `npx lidl-plus-auth` in your terminal and paste the token below.",
+        "data": {
+          "refresh_token": "Refresh Token or Callback URL"
+        }
+      },
+      "web_auth": {
+        "description": "**Step 1:** [Click here to open the Lidl Plus login page]({login_url})\n\n**Step 2:** Log in with your credentials and complete MFA if prompted.\n\n**Step 3:** After login the browser will redirect automatically. You will see \"Login successful\" and Home Assistant will capture the token automatically.\n\n⏳ Home Assistant is waiting up to 5 minutes for the callback."
       },
       "select_store": {
         "description": "Select your Lidl store from the search results below.",
@@ -27,6 +51,11 @@
     "error": {
       "search_failed": "Failed to query the Lidl store API.",
       "no_stores_found": "No Lidl stores found matching your query. Please try another search.",
+      "auth_failed": "Lidl Plus login failed. Please check your credentials.",
+      "invalid_auth": "Invalid email/phone number or password.",
+      "captcha_required": "Automatic login blocked by Captcha. Please use the Web Login link or paste your refresh token.",
+      "mfa_failed": "MFA verification failed. Please check the code and try again.",
+      "invalid_token": "The refresh token or callback URL is invalid. Please try again.",
       "unknown": "Unknown error occurred."
     }
   },
@@ -35,9 +64,40 @@
       "init": {
         "title": "Configure Lidl weekly offers",
         "data": {
-          "update_interval": "Update Interval (hours, min 1, max 24)"
+          "update_interval": "Update Interval (hours, min 1, max 168)",
+          "action": "Action"
         }
+      },
+      "login": {
+        "description": "Enter your Lidl Plus credentials or check 'Use Refresh Token / Web Login'.",
+        "data": {
+          "email": "Lidl Plus Email / Phone",
+          "password": "Lidl Plus Password",
+          "use_manual_token": "Use Refresh Token / Web Login"
+        }
+      },
+      "mfa": {
+        "description": "A verification code has been sent to your registered phone or email. Please enter it below.",
+        "data": {
+          "mfa_code": "Verification Code"
+        }
+      },
+      "manual_token": {
+        "description": "Open the [Lidl Login Link]({login_url}) in your browser, log in. The browser will redirect automatically and Home Assistant will capture the token.",
+        "data": {
+          "refresh_token": "Refresh Token (Fallback / CLI)"
+        }
+      },
+      "web_auth": {
+        "description": "**Step 1:** [Click here to open the Lidl Plus login page]({login_url})\n\n**Step 2:** Log in and complete MFA if prompted.\n\n**Step 3:** After login you will see \"Login successful\" in the browser — Home Assistant captures the token automatically.\n\n⏳ Timeout: 5 minutes."
       }
+    },
+    "error": {
+      "auth_failed": "Login failed. Please check your credentials.",
+      "invalid_auth": "Invalid email/phone number or password.",
+      "captcha_required": "Automatic login blocked by Captcha. Please use the Web Login link or paste your refresh token.",
+      "mfa_failed": "MFA verification failed. Please check the code and try again.",
+      "invalid_token": "The refresh token or callback URL is invalid. Please try again."
     }
   },
   "issues": {

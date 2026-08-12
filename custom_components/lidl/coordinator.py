@@ -164,17 +164,21 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Skip if last fetch was very recent
         if not self._force_update and self._last_success is not None:
-            time_since = dt_util.now() - self._last_success
-            effective_interval = self.update_interval or timedelta(
-                hours=DEFAULT_UPDATE_INTERVAL
+            has_personal = self.refresh_token is None or (
+                self.data and "coupons" in self.data
             )
-            if time_since < (effective_interval - timedelta(minutes=5)):
-                _LOGGER.info(
-                    "Skipping Lidl update for store %s: last success was %d min ago",
-                    self.store_key,
-                    int(time_since.total_seconds() / 60),
+            if has_personal:
+                time_since = dt_util.now() - self._last_success
+                effective_interval = self.update_interval or timedelta(
+                    hours=DEFAULT_UPDATE_INTERVAL
                 )
-                return self.data
+                if time_since < (effective_interval - timedelta(minutes=5)):
+                    _LOGGER.info(
+                        "Skipping Lidl update for store %s: last success was %d min ago",
+                        self.store_key,
+                        int(time_since.total_seconds() / 60),
+                    )
+                    return self.data
 
         try:
             domain_data = self.hass.data.setdefault(DOMAIN, {})
@@ -320,17 +324,32 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raw_coupons = api.coupons()
                 coupon_list = []
                 for c in raw_coupons:
-                    coupon_list.append(
-                        {
-                            "id": c.get("id"),
-                            "title": c.get("title") or c.get("description"),
-                            "description": c.get("description"),
-                            "discount": c.get("discountValue") or c.get("discount"),
-                            "start_date": c.get("startDate"),
-                            "end_date": c.get("endDate"),
-                            "activated": c.get("activated", False),
-                        }
-                    )
+                    if isinstance(c, dict):
+                        coupon_list.append(
+                            {
+                                "id": c.get("id"),
+                                "title": c.get("title") or c.get("description"),
+                                "description": c.get("description"),
+                                "discount": c.get("discountValue") or c.get("discount"),
+                                "start_date": c.get("startDate"),
+                                "end_date": c.get("endDate"),
+                                "activated": c.get("activated", False),
+                            }
+                        )
+                    else:
+                        coupon_list.append(
+                            {
+                                "id": getattr(c, "id", None),
+                                "title": getattr(c, "title", None)
+                                or getattr(c, "description", None),
+                                "description": getattr(c, "description", None),
+                                "discount": getattr(c, "discount_value", None)
+                                or getattr(c, "discount", None),
+                                "start_date": str(getattr(c, "start_date", "")),
+                                "end_date": str(getattr(c, "end_date", "")),
+                                "activated": getattr(c, "activated", False),
+                            }
+                        )
                 result["coupons"] = coupon_list
             except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("Failed to fetch Lidl Plus coupons: %s", exc)
@@ -338,7 +357,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # --- Loyalty ID ---
             try:
-                result["loyalty_id"] = api.loyalty_id
+                loyalty = api.loyalty_id
+                if callable(loyalty):
+                    result["loyalty_id"] = loyalty()
+                else:
+                    result["loyalty_id"] = loyalty
             except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("Failed to fetch Lidl Plus loyalty ID: %s", exc)
                 result["loyalty_id"] = None
@@ -347,24 +370,45 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 tickets = api.tickets()
                 if tickets:
-                    latest = api.ticket(tickets[0]["id"])
-                    items = []
-                    for item in latest.get("itemsLine", []):
-                        items.append(
-                            {
-                                "name": item.get("description"),
-                                "quantity": item.get("quantity"),
-                                "price": item.get("currentUnitPrice"),
+                    first_ticket = tickets[0]
+                    tid = (
+                        first_ticket.get("id")
+                        if isinstance(first_ticket, dict)
+                        else getattr(first_ticket, "id", None)
+                    )
+                    if tid:
+                        latest = api.ticket(tid)
+                        if isinstance(latest, dict):
+                            items = []
+                            for item in latest.get("itemsLine", []):
+                                items.append(
+                                    {
+                                        "name": item.get("description"),
+                                        "quantity": item.get("quantity"),
+                                        "price": item.get("currentUnitPrice"),
+                                    }
+                                )
+                            result["last_receipt"] = {
+                                "id": latest.get("id"),
+                                "date": latest.get("date"),
+                                "store": latest.get("store", {}).get("name"),
+                                "total": latest.get("totalAmount"),
+                                "currency": latest.get("currency"),
+                                "items": items,
                             }
-                        )
-                    result["last_receipt"] = {
-                        "id": latest.get("id"),
-                        "date": latest.get("date"),
-                        "store": latest.get("store", {}).get("name"),
-                        "total": latest.get("totalAmount"),
-                        "currency": latest.get("currency"),
-                        "items": items,
-                    }
+                        else:
+                            result["last_receipt"] = {
+                                "id": getattr(latest, "id", None),
+                                "date": str(getattr(latest, "date", "")),
+                                "store": getattr(
+                                    getattr(latest, "store", None), "name", None
+                                ),
+                                "total": getattr(latest, "total_amount", None),
+                                "currency": getattr(latest, "currency", None),
+                                "items": [],
+                            }
+                    else:
+                        result["last_receipt"] = None
                 else:
                     result["last_receipt"] = None
             except Exception as exc:  # noqa: BLE001
@@ -380,14 +424,29 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Activate all available (non-activated) Lidl Plus coupons. Returns count activated."""
         api = self._get_lidl_plus_api()
         activated = 0
-        coupons = api.coupons()
-        for coupon in coupons:
-            cid = coupon.get("id")
-            if cid and not coupon.get("activated", False):
-                try:
-                    api.activate_coupon(cid)
-                    activated += 1
-                    _LOGGER.debug("Activated Lidl Plus coupon %s", cid)
-                except Exception as exc:  # noqa: BLE001
-                    _LOGGER.warning("Failed to activate coupon %s: %s", cid, exc)
+        try:
+            coupons = api.coupons()
+            for coupon in coupons:
+                if isinstance(coupon, dict):
+                    cid = coupon.get("id") or coupon.get("couponId")
+                    is_activated = coupon.get("activated", False) or coupon.get(
+                        "isActivated", False
+                    )
+                else:
+                    cid = getattr(coupon, "id", None) or getattr(
+                        coupon, "coupon_id", None
+                    )
+                    is_activated = getattr(coupon, "activated", False) or getattr(
+                        coupon, "is_activated", False
+                    )
+
+                if cid and not is_activated:
+                    try:
+                        api.activate_coupon(str(cid))
+                        activated += 1
+                        _LOGGER.info("Activated Lidl Plus coupon %s", cid)
+                    except Exception as exc:  # noqa: BLE001
+                        _LOGGER.warning("Failed to activate coupon %s: %s", cid, exc)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.error("Failed to fetch coupons for activation: %s", exc)
         return activated

@@ -130,71 +130,138 @@ This integration supports **27 European countries** operating on the Lidl Plus A
 
 Logging in to your Lidl Plus account enables additional sensors and the coupon activation button. Without a login, only the public weekly offers are available.
 
-### Why is login complicated?
+---
 
-Lidl's authentication system uses a **proprietary OAuth 2.0 + PKCE flow** that is designed exclusively for their mobile app. The auth server (`accounts.lidl.com`) uses:
-- A **custom URI scheme** (`com.lidlplus.app://callback`) as the OAuth redirect target — a scheme that only the real Lidl app can handle on a mobile device.
-- **Angular SPA** (Single Page Application) for the login UI, which relies heavily on JavaScript for form submission and navigation.
-- **Anti-automation measures** that detect and reject browser-based flows that don't match the fingerprint of the real Lidl app.
+### 🏗️ How Lidl's Authentication Works
+
+Lidl uses **OAuth 2.0 with PKCE** (Proof Key for Code Exchange), designed exclusively for their mobile app. Key constraints that affect this integration:
+
+| Constraint | Effect |
+| :--- | :--- |
+| `redirect_uri` is **only** `com.lidlplus.app://callback` | No other redirect URI (including `http://localhost`) is accepted — the auth server returns *"There's been an error, Sorry, something went wrong"* for any other value |
+| Login page uses **Cloudflare Turnstile** (anti-bot CAPTCHA) | Headless/automated login is frequently blocked on new accounts or after repeated attempts |
+| MFA (2FA) is enforced on many accounts | A verification code sent via SMS/email is required even in headless mode |
+| The app deeplink `com.lidlplus.app://` cannot be opened in a desktop browser | After successful login, the browser shows a connection error — the authorization code is embedded in the failed redirect URL |
 
 ---
 
-### Option 1: Automatic login in Home Assistant *(try this first)*
+### Option 1: Automatic login *(try this first)*
 
-The integration attempts a **headless login** directly from Home Assistant using your email/password:
-1. During setup (or in Options Flow → **Log in to Lidl Plus**), enter your **Lidl Plus email/phone** and **password**.
-2. If your account uses **two-factor authentication (MFA/2FA)**, a second step will appear asking for your verification code.
-3. If login succeeds, the integration will store a **refresh token** — you will not need to log in again.
+The integration attempts a **headless login** directly from Home Assistant using your credentials:
+
+1. During setup (or via **Options → Log in to Lidl Plus**), enter your **Lidl Plus email/phone** and **password**.
+2. If your account uses **MFA/2FA**, a second step appears asking for the SMS/email verification code.
+3. On success, the integration stores a **refresh token** — you will not need to log in again.
+
+**If this fails** with one of the errors below, proceed to Option 2.
 
 ---
 
-### Option 2: Manual Refresh Token via Browser & Terminal *(fallback)*
+### Option 2: Browser-based login *(fallback when headless login is blocked)*
 
-If Option 1 fails or gets stuck on MFA, you can capture the code and exchange it for a token manually using any standard Web Browser and Terminal (PowerShell / Terminal).
+When the automatic login is blocked (Captcha, new session detection, or persistent MFA issues), Home Assistant automatically shows you a **login link** and a text field.
 
-#### Step 1: Open the Lidl OAuth Authorization Page
+#### ⚠️ What happens after MFA — and why "Hoppla!" is expected
 
-Copy the URL below, replace `COUNTRY` with your country code in uppercase (e.g. `DE`) and `LANG` with your lowercase language code (e.g. `de`), and open it in your desktop web browser:
+After you submit the MFA code, Lidl's server redirects to `com.lidlplus.app://callback?code=XXXX`. A desktop browser cannot open this mobile app deeplink, so the Lidl SPA shows:
 
+> *"Hoppla! Es ist ein Fehler aufgetreten"* / *"This site can't be reached"*
+
+**This is completely expected and correct.** The authorization code is embedded in that failed redirect URL. You capture it via the **DevTools Network tab** — Chrome and Firefox do NOT show `com.lidlplus.app://` URLs in the address bar.
+
+#### Step-by-step instructions
+
+1. **Open DevTools first**: Press **F12** in your browser → go to the **Network** tab → enable **"Preserve log"** (checkbox at the top of the Network tab).
+2. **Click the login link** shown in Home Assistant — Lidl’s login page opens.
+3. **Log in** with your Lidl Plus email and password.
+4. **Enter the MFA code** when prompted and submit it.
+5. The browser shows **"Hoppla!"** or a blank page — **this is normal and expected**.
+6. **In the Network tab**, search for `com.lidlplus.app` — you will see a failed request with a URL like:
+   ```
+   com.lidlplus.app://callback?code=XXXXXXXXXXXXXXXXXX&state=...
+   ```
+7. **Right-click that request → Copy → Copy link address** (or click it and copy "Request URL" from the Headers panel).
+8. **Paste the full URL** into the text field in Home Assistant and submit.
+9. Home Assistant extracts the code, exchanges it for a token — done.
+
+> 💡 **Alternative: paste just the refresh token**
+> If you already have a refresh token (e.g. from the CLI method below), you can paste it directly (minimum 20 characters).
+
+---
+
+### Option 3: Manual token via Terminal *(advanced)*
+
+You can generate and exchange the code yourself without relying on the HA UI. Useful if you run HA on a server without a browser accessible from the same machine.
+
+#### Step 1: Generate PKCE values
+
+In Python (any machine):
+```python
+import base64, hashlib, secrets
+
+verifier = secrets.token_urlsafe(64)
+challenge = (
+    base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+    .decode()
+    .rstrip("=")
+)
+nonce = secrets.token_urlsafe(32)
+state = secrets.token_urlsafe(32)
+print(f"verifier={verifier}\nchallenge={challenge}\nnonce={nonce}\nstate={state}")
 ```
-https://accounts.lidl.com/connect/authorize?client_id=LidlPlusNativeClient&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback&response_type=code&scope=openid%20profile%20offline_access%20lpprofile%20lpapis&code_challenge=FqIYVVYB0E6McLBFgG679hzdviy-I6EOUTRnA4COpss&code_challenge_method=S256&Country=COUNTRY&language=LANG-COUNTRY&nonce=12345678901234567890123456789012&state=12345678901234567890123456789012
+
+#### Step 2: Open the OAuth authorization URL in a browser
+
+Replace `COUNTRY` (e.g. `DE`) and use the generated values:
+```
+https://accounts.lidl.com/connect/authorize?client_id=LidlPlusNativeClient&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback&response_type=code&scope=openid%20profile%20offline_access%20lpprofile%20lpapis&code_challenge=CHALLENGE&code_challenge_method=S256&Country=COUNTRY&language=LANG-COUNTRY&nonce=NONCE&state=STATE
 ```
 
-#### Step 2: Authenticate and Capture the Redirect
+Log in → complete MFA → copy the `com.lidlplus.app://callback?code=XXX` URL from the address bar (see Option 2 Step 4–6).
 
-1. Complete the login process and enter your MFA verification code if prompted.
-2. The browser will eventually show a connection error or blank page because it tries to load `com.lidlplus.app://callback?code=...`.
-3. **Copy the full URL** from the browser's address bar. It will contain `code=YOUR_AUTHORIZATION_CODE`.
+#### Step 3: Exchange the code for a refresh token
 
-#### Step 3: Exchange the Code for a Refresh Token
-
-Open your terminal and execute the request to exchange the code. 
-
-**For Windows (PowerShell):**
+**Windows (PowerShell):**
 ```powershell
 $body = @{
-    grant_type = "authorization_code"
-    code = "PASTE_YOUR_CODE_HERE"
-    redirect_uri = "com.lidlplus.app://callback"
-    code_verifier = "LidlPlusNativeClientVerifierLidlPlusNativeClientVerifier"
+    grant_type    = "authorization_code"
+    code          = "PASTE_CODE_HERE"
+    redirect_uri  = "com.lidlplus.app://callback"
+    code_verifier = "PASTE_VERIFIER_HERE"
 }
-Invoke-RestMethod -Uri "https://accounts.lidl.com/connect/token" -Method Post -Body $body -Headers @{ Authorization = "Basic TGlkbFBsdXNOYXRpdmVDbGllbnQ6c2VjcmV0" }
+$headers = @{ Authorization = "Basic TGlkbFBsdXNOYXRpdmVDbGllbnQ6c2VjcmV0" }
+(Invoke-RestMethod -Uri "https://accounts.lidl.com/connect/token" -Method Post -Body $body -Headers $headers).refresh_token
 ```
 
-**For macOS / Linux (cURL):**
+**macOS / Linux (cURL):**
 ```bash
-curl -X POST https://accounts.lidl.com/connect/token \
+curl -s -X POST https://accounts.lidl.com/connect/token \
   -H "Authorization: Basic TGlkbFBsdXNOYXRpdmVDbGllbnQ6c2VjcmV0" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
-  -d "code=PASTE_YOUR_CODE_HERE" \
+  -d "code=PASTE_CODE_HERE" \
   -d "redirect_uri=com.lidlplus.app://callback" \
-  -d "code_verifier=LidlPlusNativeClientVerifierLidlPlusNativeClientVerifier"
+  -d "code_verifier=PASTE_VERIFIER_HERE" | python3 -m json.tool
 ```
 
-The response will contain the `refresh_token`. Copy it and paste it in Home Assistant under **Enter refresh token manually**.
+Copy the `refresh_token` value and paste it in Home Assistant.
 
 ---
+
+### 🔴 Common Errors & Solutions
+
+| Error | Cause | Solution |
+| :--- | :--- | :--- |
+| *"There's been an error, Sorry, something went wrong"* shown **before login** | The OAuth authorization URL uses a `redirect_uri` that is not `com.lidlplus.app://callback` — Lidl only accepts this exact URI | Make sure you use the link provided by Home Assistant (not a manually constructed URL with a localhost redirect) |
+| *"Login flow did not reach callback. Last status: 200"* | Cloudflare/Turnstile CAPTCHA blocked the headless login | Use Option 2 (browser-based login) — HA will show you the link automatically |
+| *"invalid_auth"* in HA | Wrong email/password | Double-check credentials on the [Lidl Plus app](https://www.lidl.de/lidl-plus) |
+| *"mfa_failed"* | Wrong or expired MFA code | Request a new code and enter it immediately |
+| Browser shows error after login but address bar is empty / URL not visible | Browser navigated away from the deeplink URL | Use F12 → Network tab to find the `com.lidlplus.app://` request (see Option 2 tip) |
+| *"invalid_token"* when pasting callback URL | Code already used or expired (codes are single-use and expire within ~60 seconds) | Start the login flow again to generate a fresh code |
+| Integration loses authentication after some time | Lidl refresh tokens expire after ~30 days of inactivity | Re-login via **Options → Log in to Lidl Plus** |
+
+---
+
 
 ## 🛠️ Options Flow
 

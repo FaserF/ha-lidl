@@ -11,10 +11,11 @@
         }
       },
       "login": {
-        "description": "Gib deine Lidl Plus E-Mail/Telefonnummer und dein Passwort ein. Die Integration meldet dich automatisch an.\n\nFalls dein Konto **Zwei-Faktor-Authentifizierung (MFA)** verwendet, wirst du im nächsten Schritt nach dem Bestätigungscode gefragt.\n\nFalls die automatische Anmeldung fehlschlägt, nutze **Refresh Token manuell eingeben** — siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "description": "Gib deine Lidl Plus E-Mail/Telefonnummer und dein Passwort ein. Die Integration versucht die automatische Anmeldung.\n\nFalls die automatische Anmeldung fehlschlägt (z. B. wegen Captcha-Schutz), wirst du direkt zur Token/Web-Anmeldung weitergeleitet.",
         "data": {
           "email": "Lidl Plus E-Mail / Telefonnummer",
-          "password": "Lidl Plus Passwort"
+          "password": "Lidl Plus Passwort",
+          "use_manual_token": "Refresh Token / Web-Login nutzen"
         }
       },
       "mfa": {
@@ -24,9 +25,9 @@
         }
       },
       "manual_token": {
-        "description": "Gib den Refresh Token ein, den du mit dem `lidl-plus` CLI-Tool erhalten hast. Siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "description": "Die automatische Anmeldung wurde blockiert oder benötigt Browser-Login.\n\n**So geht's (Chrome/Firefox):**\n1. [Klicke hier, um die Lidl Plus Anmeldeseite zu öffnen]({login_url})\n2. Melde dich mit E-Mail und Passwort an.\n3. MFA-Code eingeben und bestätigen.\n4. **F12 → Netzwerk-Tab** (am besten vor Schritt 1 öffnen, \"Protokoll beibehalten\" aktivieren) — nach dem Fehler nach einem Eintrag suchen der mit `com.lidlplus.app` beginnt. Die vollständige URL dieses Eintrags kopieren (z.B. `com.lidlplus.app://callback?code=XXXX&state=...`).\n5. Diese URL unten einfügen.\n\n> ℹ️ Der Browser zeigt nach dem MFA-Code \"Hoppla!\" — das ist normal und erwartet, da der App-Link auf dem Desktop nicht geöffnet werden kann. Der Code steckt trotzdem im Netzwerk-Tab.\n\n> 💡 Alternativ: Refresh Token direkt einfügen (mind. 20 Zeichen).",
         "data": {
-          "refresh_token": "Refresh Token"
+          "refresh_token": "Callback-URL (`com.lidlplus.app://callback?code=...`) oder Refresh Token"
         }
       },
       "select_store": {
@@ -47,9 +48,11 @@
     "error": {
       "search_failed": "Fehler bei der Abfrage der Lidl-Filiale API.",
       "no_stores_found": "Keine Lidl-Filialen gefunden. Bitte versuche eine andere Suche.",
-      "auth_failed": "Anmeldung bei Lidl Plus fehlgeschlagen. Bitte überprüfe deine Zugangsdaten oder gib den Refresh Token manuell ein.",
+      "auth_failed": "Anmeldung bei Lidl Plus fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.",
+      "invalid_auth": "E-Mail/Telefonnummer oder Passwort ist falsch.",
+      "captcha_required": "Automatische Anmeldung durch Captcha blockiert. Bitte nutze den Web-Login Link oder füge den Token manuell ein.",
       "mfa_failed": "MFA-Verifizierung fehlgeschlagen. Bitte überprüfe den Code und versuche es erneut.",
-      "invalid_token": "Der Refresh Token scheint ungültig zu sein (zu kurz). Bitte versuche es erneut.",
+      "invalid_token": "Der Refresh Token oder die Callback-URL ist ungültig. Bitte versuche es erneut.",
       "unknown": "Unbekannter Fehler aufgetreten."
     }
   },
@@ -63,10 +66,11 @@
         }
       },
       "login": {
-        "description": "Gib deine Lidl Plus E-Mail/Telefonnummer und dein Passwort ein. Die Integration meldet dich automatisch an.\n\nFalls MFA aktiviert ist, wirst du im nächsten Schritt nach dem Code gefragt.\n\nFalls die Anmeldung fehlschlägt, nutze **Refresh Token manuell eingeben** — siehe README.",
+        "description": "Gib deine Lidl Plus Zugangsdaten ein oder aktiviere 'Refresh Token / Web-Login nutzen'.",
         "data": {
           "email": "Lidl Plus E-Mail / Telefonnummer",
-          "password": "Lidl Plus Passwort"
+          "password": "Lidl Plus Passwort",
+          "use_manual_token": "Refresh Token / Web-Login nutzen"
         }
       },
       "mfa": {
@@ -76,16 +80,18 @@
         }
       },
       "manual_token": {
-        "description": "Gib den Refresh Token ein, den du mit dem `lidl-plus` CLI-Tool erhalten hast. Siehe README für eine Schritt-für-Schritt-Anleitung.",
+        "description": "**So geht's (Chrome/Firefox):**\n1. [Klicke hier, um die Lidl Plus Anmeldeseite zu öffnen]({login_url})\n2. Melde dich mit E-Mail und Passwort an.\n3. MFA-Code eingeben und bestätigen.\n4. **F12 → Netzwerk-Tab** (am besten vorher öffnen + \"Protokoll beibehalten\" aktivieren) — nach dem Fehler nach `com.lidlplus.app` Eintrag suchen, vollständige URL kopieren (z.B. `com.lidlplus.app://callback?code=XXXX&state=...`).\n5. Diese URL unten einfügen.\n\n> ℹ️ \"Hoppla!\" nach dem MFA-Code ist normal — der Code steckt im Netzwerk-Tab.\n\n> 💡 Alternativ: Refresh Token direkt einfügen (mind. 20 Zeichen).",
         "data": {
-          "refresh_token": "Refresh Token"
+          "refresh_token": "Callback-URL (`com.lidlplus.app://callback?code=...`) oder Refresh Token"
         }
       }
     },
     "error": {
       "auth_failed": "Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.",
+      "invalid_auth": "E-Mail/Telefonnummer oder Passwort ist falsch.",
+      "captcha_required": "Automatische Anmeldung durch Captcha blockiert. Bitte nutze den Web-Login Link oder füge den Token manuell ein.",
       "mfa_failed": "MFA-Verifizierung fehlgeschlagen. Bitte überprüfe den Code und versuche es erneut.",
-      "invalid_token": "Der Refresh Token scheint ungültig zu sein (zu kurz). Bitte versuche es erneut."
+      "invalid_token": "Der Refresh Token oder die Callback-URL ist ungültig. Bitte versuche es erneut."
     }
   },
   "issues": {

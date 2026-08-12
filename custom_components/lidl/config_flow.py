@@ -74,7 +74,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         self._auth_url: str = ""
         self._nonce: str = ""
         self._state: str = ""
-        # Headless auth session state
         self._login_email: str = ""
         self._login_password: str = ""
         self._mfa_session: dict[str, Any] = {}
@@ -162,7 +161,7 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
 
         if user_input is not None:
             if user_input.get("use_manual_token"):
-                return await self.async_step_manual_token()
+                return await self.async_step_web_auth()
             self._login_email = user_input["email"].strip()
             self._login_password = user_input["password"]
             try:
@@ -178,7 +177,18 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                 return await self.async_step_select_store()
             except Exception as exc:
                 _LOGGER.error("Lidl Plus headless login failed: %s", exc)
-                errors["base"] = "auth_failed"
+                exc_str = str(exc).lower()
+                if "invalid" in exc_str or "credential" in exc_str or "pass" in exc_str:
+                    errors["base"] = "invalid_auth"
+                elif (
+                    "captcha" in exc_str
+                    or "turnstile" in exc_str
+                    or "callback" in exc_str
+                    or "200" in exc_str
+                ):
+                    return await self.async_step_web_auth()
+                else:
+                    errors["base"] = "auth_failed"
 
         from homeassistant.helpers.selector import BooleanSelector
 
@@ -222,24 +232,61 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             errors=errors,
         )
 
-    async def async_step_manual_token(
+    async def async_step_web_auth(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Accept a refresh token obtained via the lidl-plus CLI as a fallback."""
-        errors: dict[str, str] = {}
+        """Show login URL and route user to manual token entry."""
+        # web_auth is an instruction-only step — route to manual_token for input
+        return await self.async_step_manual_token()
+
+    async def async_step_manual_token(
+        self,
+        user_input: dict[str, Any] | None = None,
+        errors: dict[str, str] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Accept a refresh token or callback URL from browser login."""
+        if errors is None:
+            errors = {}
 
         if user_input is not None:
-            token = user_input["refresh_token"].strip()
-            if len(token) < 20:
-                errors["base"] = "invalid_token"
-            else:
-                self._refresh_token = token
+            token_or_url = user_input.get("refresh_token", "").strip()
+            if "code=" in token_or_url or "com.lidlplus.app" in token_or_url:
+                import urllib.parse
+
+                try:
+                    parsed = urllib.parse.urlparse(token_or_url)
+                    code = urllib.parse.parse_qs(parsed.query).get("code", [""])[0]
+                    if code:
+                        result = await self.hass.async_add_executor_job(
+                            self._exchange_code_for_tokens, code
+                        )
+                        self._refresh_token = result["refresh_token"]
+                        return await self.async_step_select_store()
+                except Exception as exc:
+                    _LOGGER.error("Manual token URL exchange failed: %s", exc)
+                    errors["base"] = "invalid_token"
+            elif len(token_or_url) >= 20:
+                self._refresh_token = token_or_url
                 return await self.async_step_select_store()
+            else:
+                errors["base"] = "invalid_token"
+
+        if not self._code_verifier:
+            self._build_pkce()
+
+        login_url = self._build_auth_url()
 
         schema = vol.Schema({vol.Required("refresh_token"): str})
         return self.async_show_form(
-            step_id="manual_token", data_schema=schema, errors=errors
+            step_id="manual_token",
+            data_schema=schema,
+            description_placeholders={"login_url": login_url},
+            errors=errors,
         )
+
+    # ------------------------------------------------------------------
+    # PKCE + headless login helpers
+    # ------------------------------------------------------------------
 
     def _build_pkce(self) -> None:
         """Generate PKCE verifier/challenge, nonce, state."""
@@ -255,16 +302,9 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         self._nonce = secrets.token_urlsafe(32)
         self._state = secrets.token_urlsafe(32)
 
-    def _headless_login(self, email: str, password: str) -> dict[str, Any]:
-        """Perform headless PKCE login via curl_cffi session. Returns tokens or mfa_required dict."""
-        import re
-        import urllib.parse
-
-        from curl_cffi import requests
-
-        self._build_pkce()
-
-        auth_url = (
+    def _build_auth_url(self) -> str:
+        """Build the Lidl Plus OAuth authorization URL with PKCE."""
+        return (
             "https://accounts.lidl.com/connect/authorize"
             "?client_id=LidlPlusNativeClient"
             "&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback"
@@ -278,6 +318,16 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             f"&language={self._selected_country.lower()}-{self._selected_country}"
         )
 
+    def _headless_login(self, email: str, password: str) -> dict[str, Any]:
+        """Perform headless PKCE login. Returns tokens or mfa_required dict."""
+        import re
+        import urllib.parse
+
+        from curl_cffi import requests
+
+        self._build_pkce()
+        auth_url = self._build_auth_url()
+
         session = requests.Session()
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
@@ -285,11 +335,9 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             "Accept-Language": f"{self._selected_country.lower()}-{self._selected_country}",
         }
 
-        # 1. GET auth URL → follow redirects to login page
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)
         resp.raise_for_status()
 
-        # 2. Parse form action and all hidden form inputs
         login_data: dict[str, str] = {
             "EmailOrPhone": email,
             "Password": password,
@@ -304,7 +352,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             if name_m:
                 login_data[name_m.group(1)] = val_m.group(1) if val_m else ""
 
-        # Fallback regex for CSRF token if hidden input tag parsing missed it
         if "__RequestVerificationToken" not in login_data:
             for pattern in [
                 r'name=["\']__RequestVerificationToken["\']\s+value=["\']([^"\']+)',
@@ -338,18 +385,15 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             allow_redirects=False,
         )
 
-        # Follow redirects manually, watching for the callback or MFA page
         location = resp2.headers.get("Location", "")
         for _ in range(10):
             if not location:
                 break
             if location.startswith("com.lidlplus.app://"):
-                # Got the callback directly — extract code
                 parsed = urllib.parse.urlparse(location)
                 code = urllib.parse.parse_qs(parsed.query).get("code", [""])[0]
                 return self._exchange_code_for_tokens(code)
             if "mfa" in location.lower() or "verify" in location.lower():
-                # MFA required — save session state
                 full_url = (
                     location
                     if location.startswith("http")
@@ -367,7 +411,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                     if m:
                         mfa_csrf = m.group(1)
                         break
-                # Find MFA submit URL
                 mfa_action = full_url
                 m_mfa = re.search(
                     r'<form[^>]+action=["\']([^"\']+)["\']', mfa_resp.text
@@ -411,7 +454,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         from curl_cffi import requests
 
         session = requests.Session()
-        # Restore cookies
         for k, v in mfa_session.get("session_cookies", {}).items():
             session.cookies.set(k, v)
 
@@ -461,27 +503,25 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         )
 
     def _exchange_code_for_tokens(self, code: str) -> dict[str, str]:
-        """Perform token exchange synchronously with curl_cffi."""
+        """Exchange authorization code for tokens."""
         import base64
 
         from curl_cffi import requests
 
         auth_header = base64.b64encode(b"LidlPlusNativeClient:secret").decode()
-        headers = {
-            "Authorization": f"Basic {auth_header}",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "LidlPlus/17.0.5 Android okhttp/4.12.0",
-        }
-        payload = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": "com.lidlplus.app://callback",
-            "code_verifier": self._code_verifier,
-        }
         response = requests.post(
             "https://accounts.lidl.com/connect/token",
-            data=payload,
-            headers=headers,
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": "com.lidlplus.app://callback",
+                "code_verifier": self._code_verifier,
+            },
+            headers={
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "LidlPlus/17.0.5 Android okhttp/4.12.0",
+            },
             impersonate="chrome",
             timeout=15.0,
         )
@@ -503,7 +543,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             await self.async_set_unique_id(f"lidl_{store_key}")
             self._abort_if_unique_id_configured()
 
-            # Find matching store for details
             selected_store: Store | None = None
             for store in self._search_results:
                 if store.store_key == store_key:
@@ -525,7 +564,6 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                 return self.async_create_entry(title=title, data=entry_data)
             errors["base"] = "unknown"
 
-        # Build dropdown options
         options: dict[str, str] = {}
         for store in self._search_results:
             if store.store_key:
@@ -573,7 +611,6 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             if action == "login":
                 return await self.async_step_login()
             if action == "logout":
-                # Remove token from config entry data
                 new_data = {
                     k: v
                     for k, v in self._config_entry.data.items()
@@ -585,7 +622,6 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_create_entry(
                     title="", data=self._config_entry.options
                 )
-            # save — only update_interval
             return self.async_create_entry(
                 title="",
                 data={CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL])},
@@ -642,7 +678,20 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 return self._save_token(result["refresh_token"])
             except Exception as exc:
                 _LOGGER.error("Lidl Plus options login failed: %s", exc)
-                errors["base"] = "auth_failed"
+                exc_str = str(exc).lower()
+                if "invalid" in exc_str or "credential" in exc_str or "pass" in exc_str:
+                    errors["base"] = "invalid_auth"
+                elif (
+                    "captcha" in exc_str
+                    or "turnstile" in exc_str
+                    or "callback" in exc_str
+                    or "200" in exc_str
+                ):
+                    return await self.async_step_manual_token(
+                        errors={"base": "captcha_required"}
+                    )
+                else:
+                    errors["base"] = "auth_failed"
 
         from homeassistant.helpers.selector import BooleanSelector
 
@@ -680,21 +729,46 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(step_id="mfa", data_schema=schema, errors=errors)
 
     async def async_step_manual_token(
-        self, user_input: dict[str, Any] | None = None
+        self,
+        user_input: dict[str, Any] | None = None,
+        errors: dict[str, str] | None = None,
     ) -> config_entries.ConfigFlowResult:
-        """Accept a refresh token obtained via lidl-plus CLI."""
-        errors: dict[str, str] = {}
+        """Accept a refresh token or callback URL from browser login."""
+        if errors is None:
+            errors = {}
 
         if user_input is not None:
-            token = user_input["refresh_token"].strip()
-            if len(token) < 20:
-                errors["base"] = "invalid_token"
+            token_or_url = user_input.get("refresh_token", "").strip()
+            if "code=" in token_or_url or "com.lidlplus.app" in token_or_url:
+                import urllib.parse
+
+                try:
+                    parsed = urllib.parse.urlparse(token_or_url)
+                    code = urllib.parse.parse_qs(parsed.query).get("code", [""])[0]
+                    if code:
+                        result = await self.hass.async_add_executor_job(
+                            self._exchange_code_for_tokens, code
+                        )
+                        return self._save_token(result["refresh_token"])
+                except Exception as exc:
+                    _LOGGER.error("Options manual token URL exchange failed: %s", exc)
+                    errors["base"] = "invalid_token"
+            elif len(token_or_url) >= 20:
+                return self._save_token(token_or_url)
             else:
-                return self._save_token(token)
+                errors["base"] = "invalid_token"
+
+        if not self._code_verifier:
+            self._build_pkce()
+
+        login_url = self._build_auth_url()
 
         schema = vol.Schema({vol.Required("refresh_token"): str})
         return self.async_show_form(
-            step_id="manual_token", data_schema=schema, errors=errors
+            step_id="manual_token",
+            data_schema=schema,
+            description_placeholders={"login_url": login_url},
+            errors=errors,
         )
 
     def _save_token(self, refresh_token: str) -> config_entries.ConfigFlowResult:
@@ -704,7 +778,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=self._config_entry.options)
 
     # ------------------------------------------------------------------
-    # Headless login helpers
+    # Headless login helpers (shared with ConfigFlow via delegation)
     # ------------------------------------------------------------------
 
     def _build_pkce(self) -> None:
@@ -721,16 +795,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         self._nonce = secrets.token_urlsafe(32)
         self._state = secrets.token_urlsafe(32)
 
-    def _headless_login(self, email: str, password: str) -> dict[str, Any]:
-        """Perform headless PKCE login. Returns tokens or mfa_required dict."""
-        import re
-        import urllib.parse
-
-        from curl_cffi import requests
-
-        self._build_pkce()
-
-        auth_url = (
+    def _build_auth_url(self) -> str:
+        """Build the Lidl Plus OAuth authorization URL with PKCE."""
+        return (
             "https://accounts.lidl.com/connect/authorize"
             "?client_id=LidlPlusNativeClient"
             "&redirect_uri=com.lidlplus.app%3A%2F%2Fcallback"
@@ -744,6 +811,16 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             f"&language={self._selected_country.lower()}-{self._selected_country}"
         )
 
+    def _headless_login(self, email: str, password: str) -> dict[str, Any]:
+        """Perform headless PKCE login. Returns tokens or mfa_required dict."""
+        import re
+        import urllib.parse
+
+        from curl_cffi import requests
+
+        self._build_pkce()
+        auth_url = self._build_auth_url()
+
         session = requests.Session()
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
@@ -754,7 +831,6 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)
         resp.raise_for_status()
 
-        # Parse form action and all hidden form inputs
         login_data: dict[str, str] = {
             "EmailOrPhone": email,
             "Password": password,

@@ -58,3 +58,4 @@ norecursedirs = [
     "testing_config",
 ]
 asyncio_mode = "auto"
+pythonpath = ["stubs"]
