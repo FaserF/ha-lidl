@@ -409,6 +409,12 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 if isinstance(validity, dict)
                                 else None
                             )
+                            image_url = c.get("image")
+                            c_type = c.get("type")
+                            sec_name = s.get("name", "AllStores")
+                            is_online = (
+                                c.get("isOnlineShop", False) or sec_name == "OnlineShop"
+                            )
                             coupon_list.append(
                                 {
                                     "id": cid,
@@ -421,6 +427,10 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     "end_date": end_date[:10] if end_date else None,
                                     "activated": c.get("isActivated", False)
                                     or c.get("activated", False),
+                                    "image_url": image_url,
+                                    "type": c_type,
+                                    "section": sec_name,
+                                    "is_online_shop": is_online,
                                 }
                             )
                 result["coupons"] = coupon_list

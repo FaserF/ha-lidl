@@ -72,3 +72,64 @@ async def test_sensors(hass: HomeAssistant) -> None:
         assert preview_state is not None
         assert preview_state.state == "1"
         assert preview_state.attributes["discounts"][0]["title"] == "Butter"
+
+
+async def test_personal_coupon_sensors(hass: HomeAssistant) -> None:
+    """Test activated and available coupon sensors when logged in."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Lidl Store 123",
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            "refresh_token": "mock_refresh_token",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    mock_data = {
+        "offers": [],
+        "preview_offers": [],
+        "coupons": [
+            {
+                "id": "c1",
+                "title": "Activated Coupon",
+                "activated": True,
+                "is_online_shop": False,
+            },
+            {
+                "id": "c2",
+                "title": "Available Store Coupon",
+                "activated": False,
+                "is_online_shop": False,
+            },
+            {
+                "id": "c3",
+                "title": "Available Online Coupon",
+                "activated": False,
+                "is_online_shop": True,
+            },
+        ],
+    }
+
+    with patch(
+        "custom_components.lidl.coordinator.LidlDataUpdateCoordinator._async_update_data",
+        return_value=mock_data,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Check Activated Coupons Sensor
+        act_state = hass.states.get("sensor.lidl_store_123_activated_coupons")
+        assert act_state is not None
+        assert act_state.state == "1"
+        assert len(act_state.attributes["coupons"]) == 1
+        assert act_state.attributes["coupons"][0]["title"] == "Activated Coupon"
+
+        # Check Available Coupons Sensor
+        avail_state = hass.states.get("sensor.lidl_store_123_available_coupons")
+        assert avail_state is not None
+        assert avail_state.state == "2"
+        assert avail_state.attributes["store_coupons_count"] == 1
+        assert avail_state.attributes["online_coupons_count"] == 1

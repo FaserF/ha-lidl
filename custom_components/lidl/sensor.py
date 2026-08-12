@@ -33,7 +33,8 @@ async def async_setup_entry(
 
     if coordinator.refresh_token:
         entities += [
-            LidlCouponsSensor(coordinator),
+            LidlActivatedCouponsSensor(coordinator),
+            LidlAvailableCouponsSensor(coordinator),
             LidlLastReceiptSensor(coordinator),
             LidlLoyaltyIdSensor(coordinator),
         ]
@@ -145,20 +146,22 @@ class LidlOffersPreviewSensor(
         return self.coordinator.data is not None
 
 
-class LidlCouponsSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEntity):
-    """Represents available Lidl Plus personal coupons."""
+class LidlActivatedCouponsSensor(
+    CoordinatorEntity[LidlDataUpdateCoordinator], SensorEntity
+):
+    """Represents currently activated Lidl Plus coupons."""
 
-    _attr_icon = "mdi:ticket-percent"
+    _attr_icon = "mdi:ticket-percent-check"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "Coupons"
+    _attr_name = "Activated Coupons"
     _unrecorded_attributes = frozenset({"coupons"})
 
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
         self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_coupons"
+        self._attr_unique_id = f"lidl_{self._store_key}_activated_coupons"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._store_key)},
             name=coordinator.config_entry.title,
@@ -168,18 +171,85 @@ class LidlCouponsSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEnti
         )
 
     @property
+    def _activated_coupons(self) -> list[dict[str, Any]]:
+        """Filter activated coupons from data."""
+        if not self.coordinator.data:
+            return []
+        coupons: list[dict[str, Any]] = self.coordinator.data.get("coupons", [])
+        return [c for c in coupons if c.get("activated", False)]
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of activated coupons."""
+        if not self.coordinator.data:
+            return None
+        return len(self._activated_coupons)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return details of activated coupons."""
+        return {
+            "coupons": self._activated_coupons,
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return True if coordinator has data."""
+        return self.coordinator.data is not None and "coupons" in self.coordinator.data
+
+
+class LidlAvailableCouponsSensor(
+    CoordinatorEntity[LidlDataUpdateCoordinator], SensorEntity
+):
+    """Represents available (non-activated) Lidl Plus coupons."""
+
+    _attr_icon = "mdi:ticket-percent-outline"
+    _attr_native_unit_of_measurement = "items"
+    _attr_has_entity_name = True
+    _attr_name = "Available Coupons"
+    _unrecorded_attributes = frozenset({"coupons", "store_coupons", "online_coupons"})
+
+    def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
+        """Initialize sensor."""
+        super().__init__(coordinator)
+        self._store_key = coordinator.store_key
+        self._attr_unique_id = f"lidl_{self._store_key}_available_coupons"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._store_key)},
+            name=coordinator.config_entry.title,
+            manufacturer="Lidl",
+            model="Weekly Offers",
+            configuration_url=coordinator.configuration_url,
+        )
+
+    @property
+    def _available_coupons(self) -> list[dict[str, Any]]:
+        """Filter non-activated coupons from data."""
+        if not self.coordinator.data:
+            return []
+        coupons: list[dict[str, Any]] = self.coordinator.data.get("coupons", [])
+        return [c for c in coupons if not c.get("activated", False)]
+
+    @property
     def native_value(self) -> int | None:
         """Return the number of available coupons."""
         if not self.coordinator.data:
             return None
-        return len(self.coordinator.data.get("coupons", []))
+        return len(self._available_coupons)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return coupon details."""
-        data = self.coordinator.data or {}
+        """Return details of available coupons."""
+        available = self._available_coupons
+        store_coupons = [c for c in available if not c.get("is_online_shop", False)]
+        online_coupons = [c for c in available if c.get("is_online_shop", False)]
         return {
-            "coupons": data.get("coupons", []),
+            "coupons": available,
+            "store_coupons": store_coupons,
+            "online_coupons": online_coupons,
+            "store_coupons_count": len(store_coupons),
+            "online_coupons_count": len(online_coupons),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 
