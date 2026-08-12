@@ -89,3 +89,33 @@ async def test_coordinator_fetch_failure_backoff(hass: HomeAssistant) -> None:
 
         assert coordinator._consecutive_failures == 1
         assert coordinator._backoff_until is not None
+
+
+async def test_coordinator_preserve_personal_data_on_force_update(
+    hass: HomeAssistant,
+) -> None:
+    """Test preserving cached personal data when card_number options update without refresh_token."""
+    from custom_components.lidl.const import CONF_CARD_NUMBER
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_COUNTRY: "DE", CONF_STORE_KEY: "123"},
+        options={CONF_CARD_NUMBER: "77490000000000000"},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+    coordinator.data = {
+        "coupons": [{"id": "c1", "title": "Coupon 1", "activated": True}],
+        "last_receipt": {"total": 10.5, "currency": "EUR"},
+        "loyalty_id": "old_id",
+    }
+
+    with patch(
+        "custom_components.lidl.api.LidlAPIClient.get_offers",
+        return_value=[],
+    ):
+        res = await coordinator._async_update_data()
+        assert res["loyalty_id"] == "77490000000000000"
+        assert len(res["coupons"]) == 1
+        assert res["last_receipt"]["total"] == 10.5

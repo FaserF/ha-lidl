@@ -17,6 +17,7 @@ from homeassistant.helpers.selector import (
 from .api import LidlAPIClient, Store
 from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
+    CONF_CARD_NUMBER,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
@@ -647,6 +648,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_SKIP_SPECIAL_COUPONS: bool(
                         user_input.get(CONF_SKIP_SPECIAL_COUPONS, True)
                     ),
+                    CONF_CARD_NUMBER: str(user_input.get(CONF_CARD_NUMBER, "")).strip(),
                 },
             )
 
@@ -659,6 +661,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         current_skip_special = self._config_entry.options.get(
             CONF_SKIP_SPECIAL_COUPONS, True
         )
+        current_card_number = self._config_entry.options.get(CONF_CARD_NUMBER, "")
         existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
         is_logged_in = bool(existing_token)
 
@@ -686,6 +689,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         }
 
         if is_logged_in:
+            schema_dict[vol.Optional(CONF_CARD_NUMBER, default=current_card_number)] = (
+                str
+            )
             schema_dict[
                 vol.Optional(CONF_AUTO_ACTIVATE_COUPONS, default=current_auto_activate)
             ] = bool

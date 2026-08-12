@@ -160,4 +160,5 @@ async def test_options_flow(hass: HomeAssistant) -> None:
         CONF_UPDATE_INTERVAL: 6,
         "auto_activate_coupons": False,
         "skip_special_coupons": True,
+        "card_number": "",
     }

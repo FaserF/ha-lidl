@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 from .api import LidlAPIClient, Offer
 from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
+    CONF_CARD_NUMBER,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
@@ -47,6 +48,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.refresh_token: str | None = config.get(CONF_REFRESH_TOKEN)
         self.auto_activate_coupons: bool = config.get(CONF_AUTO_ACTIVATE_COUPONS, False)
         self.skip_special_coupons: bool = config.get(CONF_SKIP_SPECIAL_COUPONS, True)
+        self.card_number: str | None = config.get(CONF_CARD_NUMBER)
         self.config_entry = entry
 
         # Anti-ban state
@@ -286,6 +288,13 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self._fetch_personal_data
                 )
                 data.update(personal)
+            elif self.data:
+                for key in ("coupons", "last_receipt", "user_profile"):
+                    if key in self.data:
+                        data[key] = self.data[key]
+                data["loyalty_id"] = self.card_number or self.data.get("loyalty_id")
+            elif self.card_number:
+                data["loyalty_id"] = self.card_number
 
             await self.store.async_save(data)
 
@@ -438,7 +447,9 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "Failed to parse JWT token for user profile: %s", exc
                     )
 
-            result["loyalty_id"] = str(loyalty_id) if loyalty_id else None
+            result["loyalty_id"] = self.card_number or (
+                str(loyalty_id) if loyalty_id else None
+            )
             result["user_profile"] = {
                 "user_name": user_name,
                 "email": user_email,

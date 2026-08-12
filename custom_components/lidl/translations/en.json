@@ -65,6 +65,7 @@
         "title": "Configure Lidl weekly offers",
         "data": {
           "update_interval": "Update Interval (hours, min 1, max 168)",
+          "card_number": "Lidl Plus Card Barcode Number (e.g. 77490003422453494)",
           "auto_activate_coupons": "Automatically activate coupons in background",
           "skip_special_coupons": "Skip special product selection coupons (Default: Yes)",
           "action": "Action"

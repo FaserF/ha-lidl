@@ -62,6 +62,7 @@
         "title": "Lidl wöchentliche Angebote konfigurieren",
         "data": {
           "update_interval": "Update-Intervall (Stunden, Min 1, Max 168)",
+          "card_number": "Lidl Plus Kartennummer (z. B. 77490003422453494)",
           "auto_activate_coupons": "Coupons automatisch im Hintergrund aktivieren",
           "skip_special_coupons": "Spezielle Auswahl-Coupons überspringen (Standard: Ja)",
           "action": "Aktion"
