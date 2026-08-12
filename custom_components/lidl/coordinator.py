@@ -130,6 +130,27 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     @property
+    def account_configuration_url(self) -> str:
+        """Return dynamic country-specific Lidl Plus web account configuration URL."""
+        country_lower = self.country.lower()
+        tld = "com" if country_lower == "gb" else country_lower
+        client_name_map = {
+            "de": "GermanyEcommerceClient",
+            "at": "AustriaEcommerceClient",
+            "ch": "SwitzerlandEcommerceClient",
+            "nl": "NetherlandsEcommerceClient",
+            "be": "BelgiumEcommerceClient",
+            "fr": "FranceEcommerceClient",
+            "es": "SpainEcommerceClient",
+            "it": "ItalyEcommerceClient",
+            "gb": "UkEcommerceClient",
+        }
+        client_id = client_name_map.get(
+            country_lower, f"{self.country.title()}EcommerceClient"
+        )
+        return f"https://www.lidl.{tld}/mla/?country_code={country_lower}&language={country_lower}-{self.country}&client_id={client_id}"
+
+    @property
     def account_key(self) -> str:
         """Return unique key for the Lidl Plus account per country."""
         if not self.refresh_token:

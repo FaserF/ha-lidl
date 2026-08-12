@@ -172,6 +172,7 @@ class LidlActivatedCouponsSensor(
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
 
     @property
@@ -224,6 +225,7 @@ class LidlAvailableCouponsSensor(
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
 
     @property
@@ -280,6 +282,7 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
 
     @property
@@ -338,6 +341,7 @@ class LidlLoyaltyIdSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEn
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
 
     @property

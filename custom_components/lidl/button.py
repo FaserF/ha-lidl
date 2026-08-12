@@ -81,6 +81,7 @@ class LidlActivateCouponsButton(ButtonEntity):
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
 
     async def async_press(self) -> None:

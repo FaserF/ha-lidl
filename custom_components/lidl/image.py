@@ -61,6 +61,7 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
             name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
             model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
         )
         self._cached_png: bytes | None = None
         self._cached_id: str | None = None
