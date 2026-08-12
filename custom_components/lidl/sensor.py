@@ -151,7 +151,7 @@ class LidlActivatedCouponsSensor(
 ):
     """Represents currently activated Lidl Plus coupons."""
 
-    _attr_icon = "mdi:ticket-percent-check"
+    _attr_icon = "mdi:ticket-confirmation"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
     _attr_name = "Activated Coupons"
@@ -160,14 +160,13 @@ class LidlActivatedCouponsSensor(
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
-        self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_activated_coupons"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_activated_coupons"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
 
     @property
@@ -204,7 +203,7 @@ class LidlAvailableCouponsSensor(
 ):
     """Represents available (non-activated) Lidl Plus coupons."""
 
-    _attr_icon = "mdi:ticket-percent-outline"
+    _attr_icon = "mdi:ticket-percent"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
     _attr_name = "Available Coupons"
@@ -213,14 +212,13 @@ class LidlAvailableCouponsSensor(
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
-        self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_available_coupons"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_available_coupons"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
 
     @property
@@ -270,14 +268,13 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
-        self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_last_receipt"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_last_receipt"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
 
     @property
@@ -300,8 +297,12 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
         return {
             "date": receipt.get("date"),
             "store": receipt.get("store"),
+            "store_code": receipt.get("store_code"),
             "total": receipt.get("total"),
             "currency": receipt.get("currency"),
+            "total_amount_formatted": receipt.get("total_amount_formatted"),
+            "articles_count": receipt.get("articles_count"),
+            "coupons_used_count": receipt.get("coupons_used_count"),
             "items": receipt.get("items", []),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
@@ -325,14 +326,13 @@ class LidlLoyaltyIdSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEn
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
-        self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_loyalty_id"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_loyalty_id"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
 
     @property
@@ -341,6 +341,19 @@ class LidlLoyaltyIdSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEn
         if not self.coordinator.data:
             return None
         return self.coordinator.data.get("loyalty_id")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return customer profile attributes."""
+        data = self.coordinator.data or {}
+        profile = data.get("user_profile") or {}
+        return {
+            "user_name": profile.get("user_name"),
+            "email": profile.get("email"),
+            "country": profile.get("country"),
+            "registration_date": profile.get("registration_date"),
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
 
     @property
     def available(self) -> bool:

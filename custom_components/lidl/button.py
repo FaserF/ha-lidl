@@ -69,19 +69,20 @@ class LidlActivateCouponsButton(ButtonEntity):
     def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
         """Initialize the button."""
         self.coordinator = coordinator
-        self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_activate_coupons"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_activate_coupons"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
 
     async def async_press(self) -> None:
         """Activate all available Lidl Plus coupons."""
-        _LOGGER.info("Activating all Lidl Plus coupons for store %s", self._store_key)
+        _LOGGER.info(
+            "Activating all Lidl Plus coupons for account %s...", self._account_key
+        )
         count = await self.coordinator.hass.async_add_executor_job(
             self.coordinator.activate_all_coupons
         )

@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import LidlAPIClient, Offer
 from .const import (
+    CONF_AUTO_ACTIVATE_COUPONS,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
     CONF_STORE_KEY,
@@ -35,6 +36,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Manage fetching Lidl weekly offers."""
 
     config_entry: config_entries.ConfigEntry
+    configuration_url: str
 
     def __init__(self, hass: HomeAssistant, entry: config_entries.ConfigEntry) -> None:
         """Initialize coordinator."""
@@ -42,6 +44,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.store_key: str = config[CONF_STORE_KEY]
         self.country: str = config[CONF_COUNTRY]
         self.refresh_token: str | None = config.get(CONF_REFRESH_TOKEN)
+        self.auto_activate_coupons: bool = config.get(CONF_AUTO_ACTIVATE_COUPONS, False)
         self.config_entry = entry
 
         # Anti-ban state
@@ -125,6 +128,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"Lidl {self.store_key}",
             update_interval=timedelta(hours=interval_hours),
         )
+
+    @property
+    def account_key(self) -> str:
+        """Return unique key for the Lidl Plus account per country."""
+        if not self.refresh_token:
+            return f"account_{self.country.lower()}"
+        token_prefix = self.refresh_token[:16]
+        return f"account_{self.country.lower()}_{token_prefix}"
 
     async def async_load_cache(self) -> None:
         """Load cached data from HA storage (restart-resistance)."""
@@ -415,6 +426,13 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             is_online = (
                                 c.get("isOnlineShop", False) or sec_name == "OnlineShop"
                             )
+                            avail = c.get("availability", {})
+                            avail_text = (
+                                avail.get("text") if isinstance(avail, dict) else None
+                            )
+                            if avail_text and "nicht mehr verfügbar" in avail_text:
+                                continue
+
                             coupon_list.append(
                                 {
                                     "id": cid,
@@ -478,12 +496,27 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             if isinstance(currency, dict)
                             else str(currency)
                         )
+                        curr_symbol = (
+                            currency.get("symbol", curr_code)
+                            if isinstance(currency, dict)
+                            else curr_code
+                        )
+                        total_val = latest.get("totalAmount")
+                        formatted_total = (
+                            f"{total_val:.2f} {curr_symbol}".replace(".", ",")
+                            if isinstance(total_val, (int, float))
+                            else f"{total_val} {curr_symbol}".strip()
+                        )
                         result["last_receipt"] = {
                             "id": tid,
                             "date": latest.get("date"),
                             "store": store_name or latest.get("storeCode"),
-                            "total": latest.get("totalAmount"),
+                            "store_code": latest.get("storeCode"),
+                            "total": total_val,
                             "currency": curr_code,
+                            "total_amount_formatted": formatted_total,
+                            "articles_count": latest.get("articlesCount") or len(items),
+                            "coupons_used_count": latest.get("couponsUsedCount", 0),
                             "items": items,
                         }
                     else:

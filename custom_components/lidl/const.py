@@ -9,6 +9,7 @@ CONF_COUNTRY = "country"
 CONF_LANGUAGE = "language"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_REFRESH_TOKEN = "refresh_token"
+CONF_AUTO_ACTIVATE_COUPONS = "auto_activate_coupons"
 
 DEFAULT_UPDATE_INTERVAL = 24  # hours
 MIN_UPDATE_INTERVAL = 1  # hours

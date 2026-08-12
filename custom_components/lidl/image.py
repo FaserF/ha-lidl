@@ -37,7 +37,7 @@ async def async_setup_entry(
 class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], ImageEntity):
     """Represents the Lidl Plus loyalty card QR code image entity."""
 
-    _attr_icon = "mdi:qrcode"
+    _attr_icon = "mdi:qrcode-scan"
     _attr_has_entity_name = True
     _attr_name = "Loyalty Card QR Code"
 
@@ -49,13 +49,13 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
         ImageEntity.__init__(self, hass)
 
         self._store_key = coordinator.store_key
-        self._attr_unique_id = f"lidl_{self._store_key}_loyalty_card_qr"
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_loyalty_card_qr"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._store_key)},
-            name=coordinator.config_entry.title,
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
             manufacturer="Lidl",
-            model="Weekly Offers",
-            configuration_url=coordinator.configuration_url,
+            model="Lidl Plus Customer Account",
         )
         self._cached_png: bytes | None = None
         self._cached_id: str | None = None
@@ -70,8 +70,14 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes for loyalty card."""
+        data = self.coordinator.data or {}
+        profile = data.get("user_profile") or {}
         return {
             "loyalty_id": self.loyalty_id,
+            "user_name": profile.get("user_name"),
+            "email": profile.get("email"),
+            "country": profile.get("country"),
+            "registration_date": profile.get("registration_date"),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 

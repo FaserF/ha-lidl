@@ -16,6 +16,7 @@ from homeassistant.helpers.selector import (
 
 from .api import LidlAPIClient, Store
 from .const import (
+    CONF_AUTO_ACTIVATE_COUPONS,
     CONF_COUNTRY,
     CONF_REFRESH_TOKEN,
     CONF_STORE_KEY,
@@ -637,11 +638,19 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             return self.async_create_entry(
                 title="",
-                data={CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL])},
+                data={
+                    CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
+                    CONF_AUTO_ACTIVATE_COUPONS: bool(
+                        user_input.get(CONF_AUTO_ACTIVATE_COUPONS, False)
+                    ),
+                },
             )
 
         current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+        )
+        current_auto_activate = self._config_entry.options.get(
+            CONF_AUTO_ACTIVATE_COUPONS, False
         )
         existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
         is_logged_in = bool(existing_token)
@@ -655,22 +664,28 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             action_choices["login"] = "Log in to Lidl Plus (Credentials)"
             action_choices["manual_token"] = "Web Login / Enter Refresh Token"
 
-        options_schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_UPDATE_INTERVAL, default=current_interval
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=MIN_UPDATE_INTERVAL,
-                        max=MAX_UPDATE_INTERVAL,
-                        step=1,
-                        unit_of_measurement="hours",
-                        mode=NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required("action", default="save"): vol.In(action_choices),
-            }
-        )
+        schema_dict: dict[Any, Any] = {
+            vol.Optional(
+                CONF_UPDATE_INTERVAL, default=current_interval
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_UPDATE_INTERVAL,
+                    max=MAX_UPDATE_INTERVAL,
+                    step=1,
+                    unit_of_measurement="hours",
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+        }
+
+        if is_logged_in:
+            schema_dict[
+                vol.Optional(CONF_AUTO_ACTIVATE_COUPONS, default=current_auto_activate)
+            ] = bool
+
+        schema_dict[vol.Required("action", default="save")] = vol.In(action_choices)
+
+        options_schema = vol.Schema(schema_dict)
 
         return self.async_show_form(step_id="init", data_schema=options_schema)
 

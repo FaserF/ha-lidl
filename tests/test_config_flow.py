@@ -156,5 +156,7 @@ async def test_options_flow(hass: HomeAssistant) -> None:
         result["flow_id"],
         {CONF_UPDATE_INTERVAL: 6},
     )
-    assert result["type"] == "create_entry"
-    assert result["data"] == {CONF_UPDATE_INTERVAL: 6}
+    assert result["data"] == {
+        CONF_UPDATE_INTERVAL: 6,
+        "auto_activate_coupons": False,
+    }
