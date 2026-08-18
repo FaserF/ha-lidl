@@ -203,4 +203,3 @@ async def test_coordinator_auto_activate_coupons(
         assert c1["activated"] is True
         cs = next(c for c in personal_data["coupons"] if c["id"] == "coupon_special")
         assert cs["activated"] is False
-
