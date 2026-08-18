@@ -119,3 +119,88 @@ async def test_coordinator_preserve_personal_data_on_force_update(
         assert res["loyalty_id"] == "77490000000000000"
         assert len(res["coupons"]) == 1
         assert res["last_receipt"]["total"] == 10.5
+
+
+async def test_coordinator_auto_activate_coupons(
+    hass: HomeAssistant,
+) -> None:
+    """Test auto-activating coupons during personal data fetch."""
+    from custom_components.lidl.const import (
+        CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_REFRESH_TOKEN,
+        CONF_SKIP_SPECIAL_COUPONS,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            CONF_REFRESH_TOKEN: "mock_refresh",
+        },
+        options={
+            CONF_AUTO_ACTIVATE_COUPONS: True,
+            CONF_SKIP_SPECIAL_COUPONS: True,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    mock_promotions_response = {
+        "sections": [
+            {
+                "name": "StoreCoupons",
+                "coupons": [
+                    {
+                        "id": "coupon_1",
+                        "title": "Coupon 1",
+                        "isActivated": False,
+                        "isSpecial": False,
+                    },
+                    {
+                        "id": "coupon_special",
+                        "title": "Special Coupon",
+                        "isActivated": False,
+                        "isSpecial": True,
+                    },
+                ],
+            }
+        ]
+    }
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self._json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self._json_data
+
+    with (
+        patch.object(
+            coordinator,
+            "_get_access_and_id_token",
+            return_value=("mock_access", "mock_id"),
+        ),
+        patch("curl_cffi.requests.get") as mock_get,
+        patch("curl_cffi.requests.post") as mock_post,
+    ):
+        mock_get.side_effect = lambda url, **kwargs: (
+            MockResponse(mock_promotions_response)
+            if "promotionslist" in url
+            else MockResponse({})
+        )
+        mock_post.return_value = MockResponse({}, status_code=200)
+
+        personal_data = coordinator._fetch_personal_data()
+
+        # Should have posted activation only for coupon_1 (skip special is True)
+        assert mock_post.call_count == 1
+        assert "coupon_1/activation" in mock_post.call_args_list[0][0][0]
+        # coupon_1 should now be marked activated in the returned list
+        c1 = next(c for c in personal_data["coupons"] if c["id"] == "coupon_1")
+        assert c1["activated"] is True
+        cs = next(c for c in personal_data["coupons"] if c["id"] == "coupon_special")
+        assert cs["activated"] is False
+

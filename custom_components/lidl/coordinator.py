@@ -504,6 +504,40 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             if apologize_status:
                                 continue
 
+                            is_act = c.get("isActivated", False) or c.get(
+                                "activated", False
+                            )
+                            is_special = c.get("isSpecial", False)
+
+                            if self.auto_activate_coupons and not is_act and cid:
+                                if is_special and self.skip_special_coupons:
+                                    _LOGGER.info(
+                                        "Skipping special selection coupon %s based on configuration",
+                                        cid,
+                                    )
+                                else:
+                                    try:
+                                        act_payload: dict[str, Any] = {}
+                                        r_act = requests.post(
+                                            f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
+                                            headers=headers,
+                                            json=act_payload,
+                                            impersonate="chrome110",
+                                            timeout=15,
+                                        )
+                                        if r_act.status_code in (200, 201, 204):
+                                            is_act = True
+                                            _LOGGER.info(
+                                                "Auto-activated Lidl Plus coupon %s",
+                                                cid,
+                                            )
+                                    except Exception as exc:  # noqa: BLE001
+                                        _LOGGER.warning(
+                                            "Failed to auto-activate coupon %s: %s",
+                                            cid,
+                                            exc,
+                                        )
+
                             coupon_list.append(
                                 {
                                     "id": cid,
@@ -514,13 +548,12 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     if start_date
                                     else None,
                                     "end_date": end_date[:10] if end_date else None,
-                                    "activated": c.get("isActivated", False)
-                                    or c.get("activated", False),
+                                    "activated": is_act,
                                     "image_url": image_url,
                                     "type": c_type,
                                     "section": sec_name,
                                     "is_online_shop": is_online,
-                                    "is_special": c.get("isSpecial", False),
+                                    "is_special": is_special,
                                 }
                             )
                 result["coupons"] = coupon_list
