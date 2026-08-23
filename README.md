@@ -278,6 +278,15 @@ You can adjust settings at any time:
    - **Skip special product selection coupons**: Choose whether to skip coupons requiring product choices or automatically select default products.
    - **Log in to Lidl Plus** / **Log out of Lidl Plus**: Manage your Lidl Plus authentication.
 
+## 🃏 Lovelace Cards
+
+The community has built dedicated cards to display Lidl discounts beautifully in your dashboard.
+
+### Custom Discounts Card
+A dedicated Lovelace card maintained by the community:
+
+[![Discounts Card](https://img.shields.io/badge/Lovelace-%20Discounts%20Card-brightgreen?style=for-the-badge&logo=home-assistant)](https://github.com/schblondie/discounts-card)
+
 ---
 
 ## 🧑‍💻 Development
