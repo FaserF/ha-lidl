@@ -181,3 +181,50 @@ async def test_last_receipt_sensor(hass: HomeAssistant) -> None:
         assert state.attributes["articles_count"] == 8
         assert state.attributes["coupons_used_count"] == 1
         assert state.attributes["total_amount_formatted"] == "11,07 €"
+
+
+async def test_account_sensors_persist_after_reload(hass: HomeAssistant) -> None:
+    """Test account sensors persist when config entry is reloaded."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Lidl Store 123",
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            "refresh_token": "mock_refresh_token",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    mock_data = {
+        "offers": [],
+        "preview_offers": [],
+        "coupons": [
+            {
+                "id": "c1",
+                "title": "Activated Coupon",
+                "activated": True,
+                "is_online_shop": False,
+            }
+        ],
+    }
+
+    with patch(
+        "custom_components.lidl.coordinator.LidlDataUpdateCoordinator._async_update_data",
+        return_value=mock_data,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        assert (
+            hass.states.get("sensor.lidl_plus_account_de_activated_coupons") is not None
+        )
+
+        # Reload entry (as happens when saving options)
+        await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.lidl_plus_account_de_activated_coupons")
+        assert state is not None
+        assert state.state == "1"

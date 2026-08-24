@@ -32,11 +32,14 @@ async def async_setup_entry(
     ]
 
     if coordinator.refresh_token:
-        account_created_set = hass.data[DOMAIN].setdefault(
-            "_created_account_entities", set()
+        account_created_dict: dict[str, str] = hass.data[DOMAIN].setdefault(
+            "_created_account_entities", {}
         )
-        if coordinator.account_key not in account_created_set:
-            account_created_set.add(coordinator.account_key)
+        if (
+            coordinator.account_key not in account_created_dict
+            or account_created_dict[coordinator.account_key] == entry.entry_id
+        ):
+            account_created_dict[coordinator.account_key] = entry.entry_id
             entities += [
                 LidlActivatedCouponsSensor(coordinator),
                 LidlAvailableCouponsSensor(coordinator),

@@ -278,6 +278,21 @@ async def async_unload_entry(
     _LOGGER.debug("Unloading Lidl Weekly Offers entry: %s", entry.entry_id)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if coordinator and coordinator.refresh_token:
+            account_key = coordinator.account_key
+            for key in (
+                "_created_account_entities",
+                "_created_account_buttons",
+                "_created_account_images",
+            ):
+                mapping = hass.data[DOMAIN].get(key)
+                if (
+                    isinstance(mapping, dict)
+                    and mapping.get(account_key) == entry.entry_id
+                ):
+                    mapping.pop(account_key, None)
+                elif isinstance(mapping, set):
+                    mapping.discard(account_key)
     _LOGGER.debug("Unload result for Lidl entry %s: %s", entry.entry_id, unload_ok)
     return unload_ok
