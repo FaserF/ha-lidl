@@ -459,103 +459,262 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # --- Coupons ---
             try:
-                r_coupons = requests.get(
-                    "https://coupons.lidlplus.com/app/api/v1/promotionslist",
-                    headers=headers,
-                    impersonate="chrome110",
-                    timeout=15,
-                )
-                coupon_list = []
-                if r_coupons.status_code == 200:
-                    c_data = r_coupons.json()
-                    sections = c_data.get("sections", [])
-                    for s in sections:
-                        for c in s.get("coupons", []) + s.get("promotions", []):
-                            cid = c.get("id") or c.get("promotionId")
-                            discount_info = c.get("discount", {})
-                            discount_val = (
-                                discount_info.get("title")
-                                if isinstance(discount_info, dict)
-                                else str(discount_info)
-                            )
-                            validity = c.get("validity", {})
-                            start_date = (
-                                validity.get("start")
-                                if isinstance(validity, dict)
-                                else None
-                            )
-                            end_date = (
-                                validity.get("end")
-                                if isinstance(validity, dict)
-                                else None
-                            )
-                            image_url = c.get("image")
-                            c_type = c.get("type")
-                            sec_name = s.get("name", "AllStores")
-                            is_online = (
-                                c.get("isOnlineShop", False) or sec_name == "OnlineShop"
-                            )
-                            avail = c.get("availability", {})
-                            apologize_status = (
-                                avail.get("apologizeStatus", False)
-                                if isinstance(avail, dict)
-                                else False
-                            )
-                            if apologize_status:
-                                continue
+                coupon_list: list[dict[str, Any]] = []
+                seen_ids: set[str] = set()
+                today_str = dt_util.now().date().isoformat()
 
-                            is_act = c.get("isActivated", False) or c.get(
-                                "activated", False
-                            )
-                            is_special = c.get("isSpecial", False)
+                # 1. Standard Lidl Plus Coupons (V2 API)
+                try:
+                    r_v2 = requests.get(
+                        f"https://coupons.lidlplus.com/api/v2/{self.country}",
+                        headers=headers,
+                        impersonate="chrome110",
+                        timeout=15,
+                    )
+                    if r_v2.status_code == 200:
+                        v2_data = r_v2.json()
+                        v2_sections = (
+                            v2_data.get("sections", [])
+                            if isinstance(v2_data, dict)
+                            else []
+                        )
+                        for s in v2_sections:
+                            sec_name = s.get("name") or s.get("title") or "AllStores"
+                            for c in s.get("coupons", []):
+                                cid = str(c.get("id", "")).strip()
+                                if not cid or cid in seen_ids:
+                                    continue
 
-                            if self.auto_activate_coupons and not is_act and cid:
-                                if is_special and self.skip_special_coupons:
-                                    _LOGGER.info(
-                                        "Skipping special selection coupon %s based on configuration",
-                                        cid,
+                                avail = c.get("availability", {})
+                                if (
+                                    isinstance(avail, dict)
+                                    and avail.get("apologizeStatus", False)
+                                ) or c.get("apologizeStatus", False):
+                                    continue
+
+                                validity = c.get("validity", {})
+                                start_raw = (
+                                    c.get("startValidityDate")
+                                    or (
+                                        validity.get("start")
+                                        if isinstance(validity, dict)
+                                        else None
                                     )
-                                else:
-                                    try:
-                                        act_payload: dict[str, Any] = {}
-                                        r_act = requests.post(
-                                            f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
-                                            headers=headers,
-                                            json=act_payload,
-                                            impersonate="chrome110",
-                                            timeout=15,
-                                        )
-                                        if r_act.status_code in (200, 201, 204):
-                                            is_act = True
-                                            _LOGGER.info(
-                                                "Auto-activated Lidl Plus coupon %s",
-                                                cid,
-                                            )
-                                    except Exception as exc:  # noqa: BLE001
-                                        _LOGGER.warning(
-                                            "Failed to auto-activate coupon %s: %s",
-                                            cid,
-                                            exc,
-                                        )
+                                    or c.get("startDate")
+                                )
+                                end_raw = (
+                                    c.get("endValidityDate")
+                                    or (
+                                        validity.get("end")
+                                        if isinstance(validity, dict)
+                                        else None
+                                    )
+                                    or c.get("endDate")
+                                )
+                                start_date = start_raw[:10] if start_raw else None
+                                end_date = end_raw[:10] if end_raw else None
 
-                            coupon_list.append(
-                                {
-                                    "id": cid,
-                                    "title": c.get("title") or c.get("description"),
-                                    "description": c.get("description"),
-                                    "discount": discount_val,
-                                    "start_date": start_date[:10]
-                                    if start_date
-                                    else None,
-                                    "end_date": end_date[:10] if end_date else None,
-                                    "activated": is_act,
-                                    "image_url": image_url,
-                                    "type": c_type,
-                                    "section": sec_name,
-                                    "is_online_shop": is_online,
-                                    "is_special": is_special,
-                                }
-                            )
+                                if end_date and end_date < today_str:
+                                    continue
+                                if start_date and start_date > today_str:
+                                    continue
+
+                                discount_info = c.get("discount", {})
+                                discount_val = (
+                                    discount_info.get("title")
+                                    if isinstance(discount_info, dict)
+                                    else (
+                                        discount_info
+                                        or c.get("discountTitle")
+                                        or c.get("offerTitle")
+                                    )
+                                )
+                                image_url = c.get("image") or c.get("imageUrl")
+                                c_type = c.get("type", "Standard")
+                                is_online = bool(
+                                    c.get("isOnlineShop", False)
+                                ) or sec_name.lower() in ("onlineshop", "online")
+                                is_act = bool(
+                                    c.get("isActivated", False)
+                                    or c.get("activated", False)
+                                )
+                                is_special = bool(
+                                    c.get("isSpecial", False)
+                                    or c_type in ("Special", "AssignablePromotion")
+                                )
+
+                                if self.auto_activate_coupons and not is_act:
+                                    if is_special and self.skip_special_coupons:
+                                        _LOGGER.info(
+                                            "Skipping special selection coupon %s based on configuration",
+                                            cid,
+                                        )
+                                    else:
+                                        try:
+                                            r_act = requests.post(
+                                                f"https://coupons.lidlplus.com/api/v1/{self.country}/{cid}/activation",
+                                                headers=headers,
+                                                impersonate="chrome110",
+                                                timeout=15,
+                                            )
+                                            if r_act.status_code in (200, 201, 204):
+                                                is_act = True
+                                                _LOGGER.info(
+                                                    "Auto-activated Lidl Plus coupon %s",
+                                                    cid,
+                                                )
+                                        except Exception as exc:  # noqa: BLE001
+                                            _LOGGER.warning(
+                                                "Failed to auto-activate coupon %s: %s",
+                                                cid,
+                                                exc,
+                                            )
+
+                                seen_ids.add(cid)
+                                coupon_list.append(
+                                    {
+                                        "id": cid,
+                                        "title": c.get("title")
+                                        or c.get("name")
+                                        or c.get("description"),
+                                        "description": c.get("description"),
+                                        "discount": discount_val,
+                                        "start_date": start_date,
+                                        "end_date": end_date,
+                                        "activated": is_act,
+                                        "image_url": image_url,
+                                        "type": c_type,
+                                        "section": sec_name,
+                                        "is_online_shop": is_online,
+                                        "is_special": is_special,
+                                    }
+                                )
+                except Exception as exc:  # noqa: BLE001
+                    _LOGGER.warning("Failed to fetch Lidl Plus V2 coupons: %s", exc)
+
+                # 2. V1 Promotions list
+                try:
+                    r_v1 = requests.get(
+                        "https://coupons.lidlplus.com/app/api/v1/promotionslist",
+                        headers=headers,
+                        impersonate="chrome110",
+                        timeout=15,
+                    )
+                    if r_v1.status_code == 200:
+                        c_data = r_v1.json()
+                        sections = (
+                            c_data.get("sections", [])
+                            if isinstance(c_data, dict)
+                            else []
+                        )
+                        for s in sections:
+                            sec_name = s.get("name") or s.get("title") or "AllStores"
+                            for c in s.get("coupons", []) + s.get("promotions", []):
+                                cid = str(
+                                    c.get("id") or c.get("promotionId", "")
+                                ).strip()
+                                if not cid or cid in seen_ids:
+                                    continue
+
+                                avail = c.get("availability", {})
+                                if (
+                                    isinstance(avail, dict)
+                                    and avail.get("apologizeStatus", False)
+                                ) or c.get("apologizeStatus", False):
+                                    continue
+
+                                validity = c.get("validity", {})
+                                start_raw = (
+                                    validity.get("start")
+                                    if isinstance(validity, dict)
+                                    else c.get("startValidityDate")
+                                )
+                                end_raw = (
+                                    validity.get("end")
+                                    if isinstance(validity, dict)
+                                    else c.get("endValidityDate")
+                                )
+                                start_date = start_raw[:10] if start_raw else None
+                                end_date = end_raw[:10] if end_raw else None
+
+                                if end_date and end_date < today_str:
+                                    continue
+                                if start_date and start_date > today_str:
+                                    continue
+
+                                discount_info = c.get("discount", {})
+                                discount_val = (
+                                    discount_info.get("title")
+                                    if isinstance(discount_info, dict)
+                                    else (
+                                        discount_info
+                                        or c.get("discountTitle")
+                                        or c.get("offerTitle")
+                                    )
+                                )
+                                image_url = c.get("image") or c.get("imageUrl")
+                                c_type = c.get("type") or "Standard"
+                                is_online = bool(
+                                    c.get("isOnlineShop", False)
+                                ) or sec_name.lower() in ("onlineshop", "online")
+                                is_act = bool(
+                                    c.get("isActivated", False)
+                                    or c.get("activated", False)
+                                )
+                                is_special = bool(
+                                    c.get("isSpecial", False)
+                                    or c_type in ("Special", "AssignablePromotion")
+                                )
+
+                                if self.auto_activate_coupons and not is_act:
+                                    if is_special and self.skip_special_coupons:
+                                        _LOGGER.info(
+                                            "Skipping special selection coupon %s based on configuration",
+                                            cid,
+                                        )
+                                    else:
+                                        try:
+                                            act_payload: dict[str, Any] = {}
+                                            r_act = requests.post(
+                                                f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
+                                                headers=headers,
+                                                json=act_payload,
+                                                impersonate="chrome110",
+                                                timeout=15,
+                                            )
+                                            if r_act.status_code in (200, 201, 204):
+                                                is_act = True
+                                                _LOGGER.info(
+                                                    "Auto-activated Lidl Plus coupon %s",
+                                                    cid,
+                                                )
+                                        except Exception as exc:  # noqa: BLE001
+                                            _LOGGER.warning(
+                                                "Failed to auto-activate coupon %s: %s",
+                                                cid,
+                                                exc,
+                                            )
+
+                                seen_ids.add(cid)
+                                coupon_list.append(
+                                    {
+                                        "id": cid,
+                                        "title": c.get("title") or c.get("description"),
+                                        "description": c.get("description"),
+                                        "discount": discount_val,
+                                        "start_date": start_date,
+                                        "end_date": end_date,
+                                        "activated": is_act,
+                                        "image_url": image_url,
+                                        "type": c_type,
+                                        "section": sec_name,
+                                        "is_online_shop": is_online,
+                                        "is_special": is_special,
+                                    }
+                                )
+                except Exception as exc:  # noqa: BLE001
+                    _LOGGER.warning("Failed to fetch Lidl Plus V1 promotions: %s", exc)
+
                 result["coupons"] = coupon_list
             except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("Failed to fetch Lidl Plus coupons: %s", exc)
@@ -663,49 +822,188 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "Operating-System": "Android",
                 "App": "com.lidlplus.app",
             }
+            seen_ids: set[str] = set()
+            today_str = dt_util.now().date().isoformat()
 
-            r_coupons = requests.get(
-                "https://coupons.lidlplus.com/app/api/v1/promotionslist",
-                headers=headers,
-                impersonate="chrome110",
-                timeout=15,
-            )
-            if r_coupons.status_code == 200:
-                c_data = r_coupons.json()
-                for s in c_data.get("sections", []):
-                    for c in s.get("coupons", []) + s.get("promotions", []):
-                        cid = c.get("id") or c.get("promotionId")
-                        is_act = c.get("isActivated", False) or c.get(
-                            "activated", False
-                        )
-                        is_special = c.get("isSpecial", False)
+            # 1. Activate V2 coupons
+            try:
+                r_v2 = requests.get(
+                    f"https://coupons.lidlplus.com/api/v2/{self.country}",
+                    headers=headers,
+                    impersonate="chrome110",
+                    timeout=15,
+                )
+                if r_v2.status_code == 200:
+                    v2_data = r_v2.json()
+                    v2_sections = (
+                        v2_data.get("sections", []) if isinstance(v2_data, dict) else []
+                    )
+                    for s in v2_sections:
+                        for c in s.get("coupons", []):
+                            cid = str(c.get("id", "")).strip()
+                            if not cid or cid in seen_ids:
+                                continue
+                            seen_ids.add(cid)
 
-                        if cid and not is_act:
-                            if is_special and self.skip_special_coupons:
-                                _LOGGER.info(
-                                    "Skipping special selection coupon %s based on configuration",
-                                    cid,
-                                )
+                            avail = c.get("availability", {})
+                            if (
+                                isinstance(avail, dict)
+                                and avail.get("apologizeStatus", False)
+                            ) or c.get("apologizeStatus", False):
                                 continue
 
-                            try:
-                                # For special selection coupons when skip_special_coupons is False,
-                                # we send selection payload {} to select default available option.
-                                payload: dict[str, Any] = {} if is_special else {}
-                                r_act = requests.post(
-                                    f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
-                                    headers=headers,
-                                    json=payload,
-                                    impersonate="chrome110",
-                                    timeout=15,
+                            validity = c.get("validity", {})
+                            start_raw = (
+                                c.get("startValidityDate")
+                                or (
+                                    validity.get("start")
+                                    if isinstance(validity, dict)
+                                    else None
                                 )
-                                if r_act.status_code in (200, 201, 204):
-                                    activated += 1
-                                    _LOGGER.info("Activated Lidl Plus coupon %s", cid)
-                            except Exception as exc:  # noqa: BLE001
-                                _LOGGER.warning(
-                                    "Failed to activate coupon %s: %s", cid, exc
+                                or c.get("startDate")
+                            )
+                            end_raw = (
+                                c.get("endValidityDate")
+                                or (
+                                    validity.get("end")
+                                    if isinstance(validity, dict)
+                                    else None
                                 )
+                                or c.get("endDate")
+                            )
+                            start_date = start_raw[:10] if start_raw else None
+                            end_date = end_raw[:10] if end_raw else None
+                            if end_date and end_date < today_str:
+                                continue
+                            if start_date and start_date > today_str:
+                                continue
+
+                            is_act = bool(
+                                c.get("isActivated", False) or c.get("activated", False)
+                            )
+                            c_type = c.get("type", "Standard")
+                            is_special = bool(
+                                c.get("isSpecial", False)
+                                or c_type in ("Special", "AssignablePromotion")
+                            )
+
+                            if not is_act:
+                                if is_special and self.skip_special_coupons:
+                                    _LOGGER.info(
+                                        "Skipping special selection coupon %s based on configuration",
+                                        cid,
+                                    )
+                                    continue
+                                try:
+                                    r_act = requests.post(
+                                        f"https://coupons.lidlplus.com/api/v1/{self.country}/{cid}/activation",
+                                        headers=headers,
+                                        impersonate="chrome110",
+                                        timeout=15,
+                                    )
+                                    if r_act.status_code in (200, 201, 204):
+                                        activated += 1
+                                        _LOGGER.info(
+                                            "Activated Lidl Plus coupon %s", cid
+                                        )
+                                except Exception as exc:  # noqa: BLE001
+                                    _LOGGER.warning(
+                                        "Failed to activate coupon %s: %s",
+                                        cid,
+                                        exc,
+                                    )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.warning(
+                    "Failed to fetch/activate Lidl Plus V2 coupons: %s", exc
+                )
+
+            # 2. Activate V1 promotions
+            try:
+                r_v1 = requests.get(
+                    "https://coupons.lidlplus.com/app/api/v1/promotionslist",
+                    headers=headers,
+                    impersonate="chrome110",
+                    timeout=15,
+                )
+                if r_v1.status_code == 200:
+                    c_data = r_v1.json()
+                    sections = (
+                        c_data.get("sections", []) if isinstance(c_data, dict) else []
+                    )
+                    for s in sections:
+                        for c in s.get("coupons", []) + s.get("promotions", []):
+                            cid = str(c.get("id") or c.get("promotionId", "")).strip()
+                            if not cid or cid in seen_ids:
+                                continue
+                            seen_ids.add(cid)
+
+                            avail = c.get("availability", {})
+                            if (
+                                isinstance(avail, dict)
+                                and avail.get("apologizeStatus", False)
+                            ) or c.get("apologizeStatus", False):
+                                continue
+
+                            validity = c.get("validity", {})
+                            start_raw = (
+                                validity.get("start")
+                                if isinstance(validity, dict)
+                                else c.get("startValidityDate")
+                            )
+                            end_raw = (
+                                validity.get("end")
+                                if isinstance(validity, dict)
+                                else c.get("endValidityDate")
+                            )
+                            start_date = start_raw[:10] if start_raw else None
+                            end_date = end_raw[:10] if end_raw else None
+                            if end_date and end_date < today_str:
+                                continue
+                            if start_date and start_date > today_str:
+                                continue
+
+                            is_act = bool(
+                                c.get("isActivated", False) or c.get("activated", False)
+                            )
+                            c_type = c.get("type") or "Standard"
+                            is_special = bool(
+                                c.get("isSpecial", False)
+                                or c_type in ("Special", "AssignablePromotion")
+                            )
+
+                            if not is_act:
+                                if is_special and self.skip_special_coupons:
+                                    _LOGGER.info(
+                                        "Skipping special selection coupon %s based on configuration",
+                                        cid,
+                                    )
+                                    continue
+
+                                try:
+                                    payload: dict[str, Any] = {}
+                                    r_act = requests.post(
+                                        f"https://coupons.lidlplus.com/app/api/v1/promotions/{cid}/activation",
+                                        headers=headers,
+                                        json=payload,
+                                        impersonate="chrome110",
+                                        timeout=15,
+                                    )
+                                    if r_act.status_code in (200, 201, 204):
+                                        activated += 1
+                                        _LOGGER.info(
+                                            "Activated Lidl Plus coupon %s", cid
+                                        )
+                                except Exception as exc:  # noqa: BLE001
+                                    _LOGGER.warning(
+                                        "Failed to activate coupon %s: %s",
+                                        cid,
+                                        exc,
+                                    )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.warning(
+                    "Failed to fetch/activate Lidl Plus V1 promotions: %s", exc
+                )
+
         except Exception as exc:  # noqa: BLE001
             _LOGGER.error("Failed to activate Lidl Plus coupons: %s", exc)
 

@@ -203,3 +203,146 @@ async def test_coordinator_auto_activate_coupons(
         assert c1["activated"] is True
         cs = next(c for c in personal_data["coupons"] if c["id"] == "coupon_special")
         assert cs["activated"] is False
+
+
+async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
+    hass: HomeAssistant,
+) -> None:
+    """Test fetching V2 coupons, deduplicating IDs and filtering expired/apologize coupons."""
+    from custom_components.lidl.const import (
+        CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_REFRESH_TOKEN,
+        CONF_SKIP_SPECIAL_COUPONS,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "ES",
+            CONF_STORE_KEY: "ES7019",
+            CONF_REFRESH_TOKEN: "mock_refresh",
+        },
+        options={
+            CONF_AUTO_ACTIVATE_COUPONS: False,
+            CONF_SKIP_SPECIAL_COUPONS: False,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    mock_v2_response = {
+        "sections": [
+            {
+                "name": "AllStores",
+                "coupons": [
+                    {
+                        "id": "c_v2_store",
+                        "title": "Fresh Meat Discount",
+                        "isActivated": False,
+                        "discount": {"title": "-30%"},
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                    {
+                        "id": "c_v2_expired",
+                        "title": "Old Coupon",
+                        "isActivated": False,
+                        "validity": {"start": "2020-01-01", "end": "2020-01-02"},
+                    },
+                    {
+                        "id": "c_v2_apologize",
+                        "title": "Apologize Coupon",
+                        "isActivated": False,
+                        "availability": {"apologizeStatus": True},
+                    },
+                ],
+            },
+            {
+                "name": "OnlineShop",
+                "coupons": [
+                    {
+                        "id": "c_v2_online",
+                        "title": "Online Only Discount",
+                        "isActivated": True,
+                        "isOnlineShop": True,
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                    {
+                        "id": "c_v2_store",  # duplicate in another section
+                        "title": "Fresh Meat Discount Duplicate",
+                        "isActivated": False,
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                ],
+            },
+        ]
+    }
+
+    mock_v1_response = {
+        "sections": [
+            {
+                "name": "Promotions",
+                "promotions": [
+                    {
+                        "promotionId": "c_v1_promo",
+                        "title": "Special Selection Promo",
+                        "isActivated": False,
+                        "isSpecial": True,
+                        "type": "AssignablePromotion",
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                    {
+                        "promotionId": "c_v2_store",  # duplicate in V1
+                        "title": "Fresh Meat Duplicate in V1",
+                        "isActivated": False,
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                ],
+            }
+        ]
+    }
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self._json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self._json_data
+
+    with (
+        patch.object(
+            coordinator,
+            "_get_access_and_id_token",
+            return_value=("mock_access", "mock_id"),
+        ),
+        patch("curl_cffi.requests.get") as mock_get,
+    ):
+
+        def _mock_get(url, **kwargs):
+            if "promotionslist" in url:
+                return MockResponse(mock_v1_response)
+            if "/api/v2/ES" in url:
+                return MockResponse(mock_v2_response)
+            return MockResponse({})
+
+        mock_get.side_effect = _mock_get
+
+        personal_data = coordinator._fetch_personal_data()
+        coupons = personal_data["coupons"]
+
+        # Only 3 valid deduplicated coupons: c_v2_store, c_v2_online, c_v1_promo
+        assert len(coupons) == 3
+        coupon_ids = [c["id"] for c in coupons]
+        assert coupon_ids == ["c_v2_store", "c_v2_online", "c_v1_promo"]
+
+        c_online = next(c for c in coupons if c["id"] == "c_v2_online")
+        assert c_online["is_online_shop"] is True
+        assert c_online["activated"] is True
+
+        c_store = next(c for c in coupons if c["id"] == "c_v2_store")
+        assert c_store["is_online_shop"] is False
+        assert c_store["discount"] == "-30%"
+
+        c_promo = next(c for c in coupons if c["id"] == "c_v1_promo")
+        assert c_promo["is_special"] is True
