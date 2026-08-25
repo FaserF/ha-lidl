@@ -35,7 +35,7 @@ def main():
     for path in ["custom_components/lidl/manifest.json", "pyproject.toml"]:
         try:
             run_cmd(["git", "checkout", "--", path])
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     print(f"Calculated Version: {version}")
@@ -57,7 +57,7 @@ def main():
         raw_tags = run_cmd(
             ["git", "tag", "-l", "[0-9]*", "v[0-9]*", "--sort=-v:refname"]
         ).splitlines()
-    except Exception:
+    except Exception:  # noqa: BLE001
         raw_tags = []
 
     semver_tags = []
@@ -95,7 +95,7 @@ def main():
     diff_range = f"{changelog_from}..HEAD" if changelog_from else "HEAD"
     try:
         total_commit_count = int(run_cmd(["git", "rev-list", "--count", diff_range]))
-    except Exception:
+    except Exception:  # noqa: BLE001
         total_commit_count = 0
 
     # 4. Generate Changelog
@@ -117,7 +117,7 @@ def main():
             changelog_md = run_cmd(cl_args)
             if not changelog_md.strip():
                 changelog_md = "_No categorised changes detected._"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Error calling changelog generator: {e}")
 
     # 5. Channel decoration
@@ -135,7 +135,7 @@ def main():
         if changelog_from:
             diff_cmd.append(changelog_from)
         changed_files = run_cmd(diff_cmd).splitlines()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     changed_files = [f.strip() for f in changed_files if f.strip()]
@@ -173,7 +173,7 @@ def main():
                 re.MULTILINE,
             )
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     # Determine risk severity
