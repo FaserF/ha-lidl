@@ -20,6 +20,22 @@
 ### Why use this integration?
 Instead of scraping brittle public HTML pages (which constantly break) or using heavy headless browser setups, this integration connects directly to Lidl's official mobile app backend endpoints. By utilizing `curl_cffi` for advanced TLS fingerprinted client impersonation, it retrieves structured weekly store brochures and discount offers in real-time.
 
+---
+
+### 🛒 Supermarket Family & Deals Hub
+
+Check out our full collection of Home Assistant supermarket integrations and the multi-store aggregator:
+
+| Repository | Description |
+| :--- | :--- |
+| 🏷️ [**Grocery Deals (ha-grocery-deals)**](https://github.com/FaserF/ha-grocery-deals) | **Smart multi-store price comparison hub (aggregates all 5 integrations)** |
+| 🔴 [**ha-rewe**](https://github.com/FaserF/ha-rewe) | REWE weekly offers, bonus points, coupons & product filters |
+| 🟡 [**ha-edeka**](https://github.com/FaserF/ha-edeka) | EDEKA weekly offers, discounts & PAYBACK card |
+| ⚪ [**ha-aldi**](https://github.com/FaserF/ha-aldi) | ALDI Süd & ALDI Nord weekly flyers & brochures |
+| 🔴 [**ha-norma**](https://github.com/FaserF/ha-norma) | Norma weekly store discounts & flyer offers |
+
+---
+
 It groups all sensors under a single market device and implements advanced lock-serialization, random jitter delays, storage caching, and exponential backoffs to keep your setup secure and prevent rate-limiting bans.
 
 ---
@@ -311,14 +327,6 @@ pytest
 ```
 
 ---
-
-## 🛒 Other Supermarket Integrations
-
-If you like this integration, you might also be interested in my other supermarket integrations for Home Assistant:
-
-- [EDEKA Offers](https://github.com/FaserF/ha-edeka)
-- [REWE Offers](https://github.com/FaserF/ha-rewe)
-- [Aldi Offers](https://github.com/FaserF/ha-aldi)
 
 ## 📄 License
 

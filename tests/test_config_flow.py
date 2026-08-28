@@ -158,6 +158,37 @@ async def test_options_flow(hass: HomeAssistant) -> None:
     )
     assert result["data"] == {
         CONF_UPDATE_INTERVAL: 6,
+        "product_filters": [],
+        "auto_activate_coupons": False,
+        "skip_special_coupons": True,
+        "card_number": "",
+    }
+
+
+async def test_options_flow_with_product_filters(hass: HomeAssistant) -> None:
+    """Test options flow with product filters configured."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Lidl Store 123",
+        data={CONF_COUNTRY: "DE", CONF_STORE_KEY: "123"},
+        unique_id="lidl_123",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_UPDATE_INTERVAL: 12,
+            "product_filters": ["milbona", "kaffee"],
+        },
+    )
+    assert result["data"] == {
+        CONF_UPDATE_INTERVAL: 12,
+        "product_filters": ["milbona", "kaffee"],
         "auto_activate_coupons": False,
         "skip_special_coupons": True,
         "card_number": "",

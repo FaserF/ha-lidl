@@ -228,3 +228,81 @@ async def test_account_sensors_persist_after_reload(hass: HomeAssistant) -> None
         state = hass.states.get("sensor.lidl_plus_account_de_activated_coupons")
         assert state is not None
         assert state.state == "1"
+
+
+async def test_product_filter_sensor(hass: HomeAssistant) -> None:
+    """Test product filter sensor matching and attributes."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Lidl Store 123",
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+        },
+        options={
+            "product_filters": ["milbona", "pizza"],
+        },
+    )
+    entry.add_to_hass(hass)
+
+    mock_data = {
+        "offers": [
+            {
+                "id": "1",
+                "title": "Milbona Gouda jung",
+                "brand": "Milbona",
+                "category": "Käse",
+                "packaging": "400g Packung",
+                "price": "2.49 €",
+                "price_per_unit": "6.23 €/kg",
+                "image_url": "https://example.com/cheese.jpg",
+                "end_date": "2026-08-30",
+            },
+            {
+                "id": "2",
+                "title": "Milbona Butter",
+                "brand": "Milbona",
+                "category": "Molkerei",
+                "packaging": "250g",
+                "price": "1.89 €",
+                "price_per_unit": "7.56 €/kg",
+                "image_url": "https://example.com/butter.jpg",
+                "end_date": "2026-08-30",
+            },
+        ],
+        "preview_offers": [],
+    }
+
+    with patch(
+        "custom_components.lidl.coordinator.LidlDataUpdateCoordinator._async_update_data",
+        return_value=mock_data,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Match found: Milbona (best price is 1.89 €)
+        milbona_state = hass.states.get("sensor.lidl_store_123_offer_milbona")
+        assert milbona_state is not None
+        assert milbona_state.state == "1.89 €"
+        assert milbona_state.attributes["on_sale"] is True
+        assert milbona_state.attributes["match_count"] == 2
+        assert milbona_state.attributes["best_price"] == "1.89 €"
+        assert milbona_state.attributes["filter"] == "milbona"
+        assert milbona_state.attributes["product_title"] == "Milbona Butter"
+        assert milbona_state.attributes["category"] == "Molkerei"
+        assert milbona_state.attributes["base_price"] == "7.56 €/kg"
+        assert milbona_state.attributes["valid_until"] == "2026-08-30"
+        assert (
+            milbona_state.attributes["picture_link"] == "https://example.com/butter.jpg"
+        )
+        assert len(milbona_state.attributes["matches"]) == 2
+
+        # No match: pizza
+        pizza_state = hass.states.get("sensor.lidl_store_123_offer_pizza")
+        assert pizza_state is not None
+        assert pizza_state.state == "Nicht im Angebot"
+        assert pizza_state.attributes["on_sale"] is False
+        assert pizza_state.attributes["match_count"] == 0
+        assert pizza_state.attributes["best_price"] is None
+        assert pizza_state.attributes["product_title"] is None
+        assert len(pizza_state.attributes["matches"]) == 0

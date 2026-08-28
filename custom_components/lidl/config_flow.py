@@ -12,6 +12,9 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
 )
 
 from .api import LidlAPIClient, Store
@@ -19,6 +22,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_CARD_NUMBER,
     CONF_COUNTRY,
+    CONF_PRODUCT_FILTERS,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
     CONF_STORE_KEY,
@@ -638,10 +642,20 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_create_entry(
                     title="", data=self._config_entry.options
                 )
+            product_filters_input = user_input.get(CONF_PRODUCT_FILTERS, [])
+            if isinstance(product_filters_input, str):
+                product_filters = [
+                    f.strip() for f in product_filters_input.split(",") if f.strip()
+                ]
+            else:
+                product_filters = [
+                    str(f).strip() for f in product_filters_input if str(f).strip()
+                ]
             return self.async_create_entry(
                 title="",
                 data={
                     CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
+                    CONF_PRODUCT_FILTERS: product_filters,
                     CONF_AUTO_ACTIVATE_COUPONS: bool(
                         user_input.get(CONF_AUTO_ACTIVATE_COUPONS, False)
                     ),
@@ -654,6 +668,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+        )
+        current_product_filters = self._config_entry.options.get(
+            CONF_PRODUCT_FILTERS, []
         )
         current_auto_activate = self._config_entry.options.get(
             CONF_AUTO_ACTIVATE_COUPONS, False
@@ -684,6 +701,16 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                     step=1,
                     unit_of_measurement="hours",
                     mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_PRODUCT_FILTERS, default=current_product_filters
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=current_product_filters,
+                    multiple=True,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
                 )
             ),
         }

@@ -20,6 +20,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_CARD_NUMBER,
     CONF_COUNTRY,
+    CONF_PRODUCT_FILTERS,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
     CONF_STORE_KEY,
@@ -49,6 +50,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.auto_activate_coupons: bool = config.get(CONF_AUTO_ACTIVATE_COUPONS, False)
         self.skip_special_coupons: bool = config.get(CONF_SKIP_SPECIAL_COUPONS, True)
         self.card_number: str | None = config.get(CONF_CARD_NUMBER)
+        self.product_filters: list[str] = config.get(CONF_PRODUCT_FILTERS, [])
         self.config_entry = entry
 
         # Anti-ban state

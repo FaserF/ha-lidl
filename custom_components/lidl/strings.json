@@ -59,6 +59,7 @@
         "title": "Configure Lidl weekly offers",
         "data": {
           "update_interval": "Update Interval (hours, min 1, max 168)",
+          "product_filters": "Product filters (keywords to monitor for offers)",
           "action": "Action"
         }
       },
