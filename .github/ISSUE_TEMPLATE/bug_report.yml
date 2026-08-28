@@ -18,7 +18,7 @@ body:
     attributes:
       label: Integration Version
       description: Which version of ha-lidl are you running? (HACS or integration page)
-      placeholder: e.g. v1.2.1
+      placeholder: e.g. v1.2.2
     validations:
       required: true
 
