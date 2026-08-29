@@ -164,6 +164,30 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         token_prefix = self.refresh_token[:16]
         return f"account_{self.country.lower()}_{token_prefix}"
 
+    @property
+    def is_data_valid(self) -> bool:
+        """Return True if cached data is still valid for the current week (until Sunday 23:59:59)."""
+        if not self.data:
+            return False
+
+        now = dt_util.now()
+        current_monday = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        if self._last_success and self._last_success >= current_monday:
+            return True
+
+        valid_until = self.data.get("valid_until")
+        if valid_until:
+            try:
+                val_date = dt_util.parse_date(str(valid_until).split("T")[0])
+                if val_date and val_date >= now.date():
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+
+        return False
+
     async def async_load_cache(self) -> None:
         """Load cached data from HA storage (restart-resistance)."""
         cache = await self.store.async_load()
@@ -342,6 +366,15 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         translation_key="connection_error",
                     )
                     self._issue_created = True
+
+            # If we have valid cached data for the current week, fall back to it so entities stay available
+            if self.is_data_valid and self.data:
+                _LOGGER.warning(
+                    "Lidl store %s: fetch failed, but cached data for the current week is valid – continuing with cached data. Error: %s",
+                    self.store_key,
+                    err,
+                )
+                return self.data
 
             raise UpdateFailed(f"Error communicating with Lidl API: {err}") from err
 
