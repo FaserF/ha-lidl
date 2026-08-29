@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from homeassistant import config_entries
@@ -46,8 +47,31 @@ async def async_setup_entry(
                 LidlLastReceiptSensor(coordinator),
             ]
 
+    active_slugs = set()
     for product_filter in coordinator.product_filters:
-        entities.append(LidlProductFilterSensor(coordinator, product_filter))
+        clean_filter = product_filter.strip()
+        if clean_filter:
+            entities.append(LidlProductFilterSensor(coordinator, clean_filter))
+            clean_slug = re.sub(r"[^a-z0-9_]+", "_", clean_filter.lower()).strip("_")
+            active_slugs.add(f"lidl_{coordinator.store_key}_filter_{clean_slug}")
+
+    # Reconcile entity registry: purge any filter entities belonging to this entry that are no longer configured
+    from homeassistant.helpers import entity_registry as er
+
+    ent_reg = er.async_get(hass)
+    entry_entities = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    for ent in entry_entities:
+        if (
+            ent.domain == "sensor"
+            and ent.unique_id.startswith(f"lidl_{coordinator.store_key}_filter_")
+            and ent.unique_id not in active_slugs
+        ):
+            ent_reg.async_remove(ent.entity_id)
+            _LOGGER.debug(
+                "Lidl: Removed stale filter entity %s (unique_id=%s)",
+                ent.entity_id,
+                ent.unique_id,
+            )
 
     async_add_entities(entities, update_before_add=False)
 
