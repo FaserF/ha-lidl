@@ -195,9 +195,11 @@ async def test_coordinator_auto_activate_coupons(
 
         personal_data = coordinator._fetch_personal_data()
 
-        # Should have posted activation only for coupon_1 (skip special is True)
-        assert mock_post.call_count == 1
-        assert "coupon_1/activation" in mock_post.call_args_list[0][0][0]
+        activation_posts = [
+            call for call in mock_post.call_args_list if "/activation" in call[0][0]
+        ]
+        assert len(activation_posts) == 1
+        assert "coupon_1/activation" in activation_posts[0][0][0]
         # coupon_1 should now be marked activated in the returned list
         c1 = next(c for c in personal_data["coupons"] if c["id"] == "coupon_1")
         assert c1["activated"] is True
@@ -346,3 +348,189 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
 
         c_promo = next(c for c in coupons if c["id"] == "c_v1_promo")
         assert c_promo["is_special"] is True
+
+
+async def test_fetch_home_logged_and_segmented_coupons(
+    hass: HomeAssistant,
+) -> None:
+    """Test fetching personalized coupons from home/logged using user segments."""
+    from custom_components.lidl.const import (
+        CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_REFRESH_TOKEN,
+        CONF_SKIP_SPECIAL_COUPONS,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "ES",
+            CONF_STORE_KEY: "ES7019",
+            CONF_REFRESH_TOKEN: "mock_refresh",
+        },
+        options={
+            CONF_AUTO_ACTIVATE_COUPONS: False,
+            CONF_SKIP_SPECIAL_COUPONS: False,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    mock_home_response = {
+        "promotions": {
+            "sections": [
+                {
+                    "name": "PersonalizedSection",
+                    "promotions": [
+                        {
+                            "id": "promo_pan",
+                            "title": "Cupón Pan",
+                            "discount": {
+                                "title": "-15%",
+                                "description": "Compra mín. de 100€",
+                            },
+                            "specialPromotion": {"tag": "CUPÓN PAN🥖🥐"},
+                            "isActivated": False,
+                            "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                        },
+                        {
+                            "id": "promo_scratch",
+                            "title": "Premio Rasca Plus",
+                            "discount": {"title": "-70%"},
+                            "specialPromotion": {"tag": "PREMIO"},
+                            "isActivated": True,
+                            "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self._json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self._json_data
+
+    with (
+        patch.object(
+            coordinator,
+            "_get_access_and_id_token",
+            return_value=("mock_access", "mock_id"),
+        ),
+        patch("curl_cffi.requests.get") as mock_get,
+        patch("curl_cffi.requests.post") as mock_post,
+    ):
+
+        def _mock_get(url, **kwargs):
+            if "usersegments" in url:
+                return MockResponse(["seg1", "seg2"])
+            return MockResponse({})
+
+        def _mock_post(url, **kwargs):
+            if "home/logged" in url:
+                assert kwargs.get("headers", {}).get("Segment-ids") == "seg1,seg2"
+                assert kwargs.get("json", {}).get("storeId") == "ES7019"
+                return MockResponse(mock_home_response)
+            return MockResponse({})
+
+        mock_get.side_effect = _mock_get
+        mock_post.side_effect = _mock_post
+
+        personal_data = coordinator._fetch_personal_data()
+        coupons = personal_data["coupons"]
+
+        assert len(coupons) == 2
+        pan = next(c for c in coupons if c["id"] == "promo_pan")
+        assert pan["title"] == "Cupón Pan"
+        assert pan["discount"] == "-15%"
+        assert pan["description"] == "Compra mín. de 100€"
+        assert pan["is_special"] is True
+        assert pan["activated"] is False
+
+        scratch = next(c for c in coupons if c["id"] == "promo_scratch")
+        assert scratch["is_special"] is True
+        assert scratch["activated"] is True
+
+
+async def test_activate_all_coupons_with_home_logged(
+    hass: HomeAssistant,
+) -> None:
+    """Test activating all coupons including segmented/home logged promotions."""
+    from custom_components.lidl.const import (
+        CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_REFRESH_TOKEN,
+        CONF_SKIP_SPECIAL_COUPONS,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "ES",
+            CONF_STORE_KEY: "ES7019",
+            CONF_REFRESH_TOKEN: "mock_refresh",
+        },
+        options={
+            CONF_AUTO_ACTIVATE_COUPONS: False,
+            CONF_SKIP_SPECIAL_COUPONS: False,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    mock_home_response = {
+        "promotions": {
+            "sections": [
+                {
+                    "name": "PersonalizedSection",
+                    "promotions": [
+                        {
+                            "id": "promo_pan",
+                            "title": "Cupón Pan",
+                            "discount": {"title": "-15%"},
+                            "specialPromotion": {"tag": "CUPÓN PAN🥖🥐"},
+                            "isActivated": False,
+                            "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self._json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self._json_data
+
+    with (
+        patch.object(
+            coordinator,
+            "_get_access_and_id_token",
+            return_value=("mock_access", "mock_id"),
+        ),
+        patch("curl_cffi.requests.get") as mock_get,
+        patch("curl_cffi.requests.post") as mock_post,
+    ):
+        mock_get.side_effect = lambda url, **kwargs: (
+            MockResponse(["seg1"]) if "usersegments" in url else MockResponse({})
+        )
+
+        def _mock_post(url, **kwargs):
+            if "home/logged" in url:
+                return MockResponse(mock_home_response)
+            if "promo_pan/activation" in url:
+                return MockResponse({}, status_code=200)
+            return MockResponse({})
+
+        mock_post.side_effect = _mock_post
+
+        activated_count = coordinator.activate_all_coupons()
+        assert activated_count == 1
