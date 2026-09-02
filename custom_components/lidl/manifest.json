@@ -9,10 +9,10 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/FaserF/ha-lidl/issues",
   "requirements": [
-    "curl_cffi>=0.15.0",
-    "pydantic>=2.13.4",
-    "lidl-plus>=0.3.5",
-    "qrcode>=7.4"
+    "curl_cffi==0.16.3",
+    "pydantic==2.13.5",
+    "lidl-plus==0.3.5",
+    "qrcode==8.2"
   ],
   "version": "1.2.5-dev0"
 }
