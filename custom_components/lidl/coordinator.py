@@ -27,6 +27,8 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    language_for_country,
+    tld_for_country,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -118,13 +120,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "dk": "butikker",
                 "se": "butiker",
                 "fi": "myymalat",
+                "us": "stores",
             }
             path_segment = path_mapping.get(lang, "filialen")
-            tld = "com" if lang == "gb" else lang
+            tld = tld_for_country(self.country)
 
             self.configuration_url = f"https://www.lidl.{tld}/s/{lang}-{self.country}/{path_segment}/{slug_city}/{slug_address}/"
         else:
-            tld = "com" if self.country.lower() == "gb" else self.country.lower()
+            tld = tld_for_country(self.country)
             self.configuration_url = f"https://www.lidl.{tld}/"
 
         super().__init__(
@@ -139,7 +142,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def account_configuration_url(self) -> str:
         """Return dynamic country-specific Lidl Plus web account configuration URL."""
         country_lower = self.country.lower()
-        tld = "com" if country_lower == "gb" else country_lower
+        tld = tld_for_country(self.country)
         client_name_map = {
             "de": "GermanyEcommerceClient",
             "at": "AustriaEcommerceClient",
@@ -150,11 +153,12 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "es": "SpainEcommerceClient",
             "it": "ItalyEcommerceClient",
             "gb": "UkEcommerceClient",
+            "us": "USAEcommerceClient",
         }
         client_id = client_name_map.get(
             country_lower, f"{self.country.title()}EcommerceClient"
         )
-        return f"https://www.lidl.{tld}/mla/?country_code={country_lower}&language={country_lower}-{self.country}&client_id={client_id}"
+        return f"https://www.lidl.{tld}/mla/?country_code={country_lower}&language={language_for_country(self.country)}&client_id={client_id}"
 
     @property
     def account_key(self) -> str:
@@ -428,7 +432,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Country": self.country,
-                "Accept-Language": f"{self.country.lower()}-{self.country}",
+                "Accept-Language": language_for_country(self.country),
                 "App-Version": "17.0.5",
                 "Operating-System": "Android",
                 "App": "com.lidlplus.app",
@@ -1046,7 +1050,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Country": self.country,
-                "Accept-Language": f"{self.country.lower()}-{self.country}",
+                "Accept-Language": language_for_country(self.country),
                 "App-Version": "17.0.5",
                 "Operating-System": "Android",
                 "App": "com.lidlplus.app",

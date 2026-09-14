@@ -109,7 +109,7 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 
 ### 🌍 Supported Countries
 
-This integration supports **27 European countries** operating on the Lidl Plus API infrastructure:
+This integration supports **28 countries** operating on the Lidl Plus API infrastructure:
 
 | Country | Code | Country | Code | Country | Code |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -122,11 +122,13 @@ This integration supports **27 European countries** operating on the Lidl Plus A
 | 🇱🇺 Luxembourg | `LU` | 🇱🇻 Latvia | `LV` | 🇳🇱 Netherlands | `NL` |
 | 🇵🇱 Poland | `PL` | 🇵🇹 Portugal | `PT` | 🇷🇴 Romania | `RO` |
 | 🇸🇪 Sweden | `SE` | 🇸🇮 Slovenia | `SI` | 🇸🇰 Slovakia | `SK` |
+| 🇺🇸 United States | `US` | | | | |
+
+> **Note for US users**: Lidl Plus launched in the United States in 2026. The US region uses the same shared Lidl Plus API infrastructure (`stores.lidlplus.com`, `offers.lidlplus.com`) as European countries. The Accept-Language header is automatically set to `en-US` and the website link resolves to `lidl.com`.
 
 #### ❌ Unsupported Countries & Technical Reasons
 
-- **🇺🇸 United States (`US`)**: Lidl US operates an entirely independent infrastructure/app system ("myLidl") separate from the European Lidl Plus mobile backend (`tickets.lidlplus.com`). The European API endpoints return HTTP 404 for US requests.
-- **🇨🇦 / 🇦🇺 / 🇳🇿 / 🇯🇵 / 🇨🇳 / Non-European countries**: Lidl does not operate stores or Lidl Plus mobile services in these regions.
+- **🇨🇦 / 🇦🇺 / 🇳🇿 / 🇯🇵 / 🇨🇳 / Non-Lidl countries**: Lidl does not operate stores or Lidl Plus mobile services in these regions.
 
 ---
 

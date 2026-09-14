@@ -57,6 +57,7 @@ _SUPPORTED_COUNTRIES = {
     "SE",
     "SI",
     "SK",
+    "US",
 }
 
 

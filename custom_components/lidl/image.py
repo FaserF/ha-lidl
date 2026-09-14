@@ -10,7 +10,7 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.components.image import ImageEntity
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -73,6 +73,17 @@ class LidlLoyaltyCardQrImage(CoordinatorEntity[LidlDataUpdateCoordinator], Image
         )
         self._cached_png: bytes | None = None
         self._cached_id: str | None = None
+        if coordinator.data and coordinator.data.get("loyalty_id"):
+            self._attr_image_last_updated = dt_util.now()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        lid = self.loyalty_id
+        if lid and (self._attr_image_last_updated is None or lid != self._cached_id):
+            self._cached_png = None
+            self._attr_image_last_updated = dt_util.now()
+        super()._handle_coordinator_update()
 
     @property
     def loyalty_id(self) -> str | None:

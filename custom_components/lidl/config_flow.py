@@ -31,6 +31,7 @@ from .const import (
     DOMAIN,
     MAX_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL,
+    language_for_country,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +64,7 @@ SUPPORTED_COUNTRIES = {
     "SE": "Sweden",
     "SI": "Slovenia",
     "SK": "Slovakia",
+    "US": "United States",
 }
 
 
@@ -333,7 +335,7 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             f"&nonce={self._nonce}"
             f"&state={self._state}"
             f"&Country={self._selected_country}"
-            f"&language={self._selected_country.lower()}-{self._selected_country}"
+            f"&language={language_for_country(self._selected_country)}"
         )
 
     def _headless_login(self, email: str, password: str) -> dict[str, Any]:
@@ -350,7 +352,7 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": f"{self._selected_country.lower()}-{self._selected_country}",
+            "Accept-Language": language_for_country(self._selected_country),
         }
 
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)
@@ -886,7 +888,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             f"&nonce={self._nonce}"
             f"&state={self._state}"
             f"&Country={self._selected_country}"
-            f"&language={self._selected_country.lower()}-{self._selected_country}"
+            f"&language={language_for_country(self._selected_country)}"
         )
 
     def _headless_login(self, email: str, password: str) -> dict[str, Any]:
@@ -903,7 +905,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": f"{self._selected_country.lower()}-{self._selected_country}",
+            "Accept-Language": language_for_country(self._selected_country),
         }
 
         resp = session.get(auth_url, headers=headers, impersonate="chrome", timeout=20)

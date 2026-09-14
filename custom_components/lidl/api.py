@@ -8,6 +8,8 @@ from typing import Any, Literal
 from curl_cffi import requests
 from pydantic import BaseModel, ConfigDict, Field
 
+from .const import language_for_country
+
 _LOGGER = logging.getLogger(__name__)
 
 STORES_BASE_URL = "https://stores.lidlplus.com/api/"
@@ -102,7 +104,7 @@ class LidlAPIClient:
 
     def __init__(self, country: str, language: str | None = None) -> None:
         self.country = country.upper()
-        self.language = language or f"{self.country.lower()}-{self.country}"
+        self.language = language or language_for_country(self.country)
         self.app_version = APP_VERSION
 
     def _request(
