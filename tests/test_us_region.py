@@ -1,5 +1,7 @@
 """Tests for US region support and const helper functions."""
 
+from unittest.mock import patch
+
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -70,7 +72,7 @@ async def test_coordinator_us_configuration_url_no_store(hass) -> None:
     entry.add_to_hass(hass)
     coordinator = LidlDataUpdateCoordinator(hass, entry)
     # No store address is loaded yet, so it falls back to the generic URL
-    assert "lidl.com" in coordinator.configuration_url
+    assert coordinator.configuration_url == "https://www.lidl.com/"
 
 
 async def test_coordinator_us_account_configuration_url(hass) -> None:
@@ -83,9 +85,9 @@ async def test_coordinator_us_account_configuration_url(hass) -> None:
     entry.add_to_hass(hass)
     coordinator = LidlDataUpdateCoordinator(hass, entry)
     url = coordinator.account_configuration_url
-    assert "lidl.com" in url, f"Expected lidl.com in URL, got: {url}"
-    assert "en-US" in url, f"Expected en-US language in URL, got: {url}"
-    assert "us-US" not in url, f"Unexpected 'us-US' in URL: {url}"
+    assert url == (
+        "https://www.lidl.com/mla/?country_code=us&language=en-US&client_id=USAEcommerceClient"
+    )
 
 
 async def test_coordinator_us_language_in_headers(hass) -> None:
@@ -100,7 +102,6 @@ async def test_coordinator_us_language_in_headers(hass) -> None:
     lang = language_for_country(coordinator.country)
     assert lang == "en-US"
     assert lang != "us-US"
-
 
 
 def test_us_store_search_by_postal_code_and_city() -> None:

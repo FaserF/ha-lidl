@@ -166,13 +166,16 @@ class LidlAPIClient:
                 ]
                 searchable = " ".join(v for v in searchable_values if v).casefold()
 
-                def _match_term(term: str) -> bool:
+                matches = True
+                for term in terms:
                     term_collapsed = re.sub(r"[^a-z0-9]+", "", term)
-                    return term in searchable or (
-                        bool(term_collapsed) and term_collapsed in searchable
-                    )
+                    if term not in searchable and (
+                        not term_collapsed or term_collapsed not in searchable
+                    ):
+                        matches = False
+                        break
 
-                if all(_match_term(term) for term in terms):
+                if matches:
                     stores.append(store)
         return stores
 
