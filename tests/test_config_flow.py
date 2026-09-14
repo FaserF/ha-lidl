@@ -193,3 +193,35 @@ async def test_options_flow_with_product_filters(hass: HomeAssistant) -> None:
         "skip_special_coupons": True,
         "card_number": "",
     }
+
+
+async def test_flow_user_remembers_selected_country_on_no_stores_found(
+    hass: HomeAssistant,
+) -> None:
+    """Test that selected country is preserved when store search yields no results."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+    # Search in Spain (ES) with no matching stores found
+    with patch(
+        "custom_components.lidl.api.LidlAPIClient.search_stores",
+        return_value=[],
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_COUNTRY: "ES", "search_query": "Nonexistent City"},
+        )
+        assert result["type"] == "form"
+        assert result["step_id"] == "user"
+        assert result["errors"] == {"base": "no_stores_found"}
+
+        # Verify default for CONF_COUNTRY in the returned schema matches previous selection 'ES'
+        country_field = [
+            marker
+            for marker in result["data_schema"].schema
+            if marker == CONF_COUNTRY or getattr(marker, "schema", None) == CONF_COUNTRY
+        ][0]
+        assert country_field.default() == "ES"

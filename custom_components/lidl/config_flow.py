@@ -161,7 +161,9 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_COUNTRY, default="DE"): vol.In(SUPPORTED_COUNTRIES),
+                vol.Required(CONF_COUNTRY, default=self._selected_country): vol.In(
+                    SUPPORTED_COUNTRIES
+                ),
                 vol.Required("search_query"): str,
                 vol.Required("login_to_lidl_plus", default=False): bool,
             }

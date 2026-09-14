@@ -100,3 +100,57 @@ async def test_coordinator_us_language_in_headers(hass) -> None:
     lang = language_for_country(coordinator.country)
     assert lang == "en-US"
     assert lang != "us-US"
+
+
+
+def test_us_store_search_by_postal_code_and_city() -> None:
+    """Test searching US stores with full postal code, 5-digit ZIP, and city name."""
+    from custom_components.lidl.api import LidlAPIClient
+
+    client = LidlAPIClient(country="US")
+    mock_stores_payload = [
+        {
+            "storeKey": "US1595",
+            "name": "Idylwood Plaza",
+            "address": "7511 Leesburg Pike",
+            "postalCode": "22043-2105",
+            "locality": "Falls Church",
+            "state": "Virginia",
+            "province": "",
+        },
+        {
+            "storeKey": "US1590",
+            "name": "Grand Street",
+            "address": "408 Grand St",
+            "postalCode": "10002-4702",
+            "locality": "New York",
+            "state": "New York",
+            "province": "USA TOTAL",
+        },
+    ]
+
+    with patch.object(client, "_request", return_value=mock_stores_payload):
+        # 5-digit ZIP search (prefix)
+        res_5digit = client.search_stores("22043")
+        assert len(res_5digit) == 1
+        assert res_5digit[0].store_key == "US1595"
+
+        # Full ZIP+4 search
+        res_full = client.search_stores("22043-2105")
+        assert len(res_full) == 1
+        assert res_full[0].store_key == "US1595"
+
+        # ZIP+4 with space instead of hyphen
+        res_space = client.search_stores("22043 2105")
+        assert len(res_space) == 1
+        assert res_space[0].store_key == "US1595"
+
+        # City search
+        res_city = client.search_stores("Falls Church")
+        assert len(res_city) == 1
+        assert res_city[0].store_key == "US1595"
+
+        # State search
+        res_state = client.search_stores("Virginia")
+        assert len(res_state) == 1
+        assert res_state[0].store_key == "US1595"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Literal
 
 from curl_cffi import requests
@@ -30,6 +31,8 @@ class Store(BaseModel):
     address: str | None = None
     postal_code: str | None = Field(default=None, alias="postalCode")
     locality: str | None = None
+    state: str | None = None
+    province: str | None = None
     distance: float | None = None
     location: Location | None = None
 
@@ -146,18 +149,30 @@ class LidlAPIClient:
             terms = [term.casefold() for term in query.split() if term.strip()]
             for item in all_data:
                 store = Store.model_validate(item)
-                searchable = " ".join(
-                    value
-                    for value in (
-                        store.store_key,
-                        store.name,
-                        store.address,
-                        store.postal_code,
-                        store.locality,
+                raw_postal = store.postal_code or ""
+                postal_parts = re.split(r"[^a-z0-9]+", raw_postal.casefold())
+                postal_collapsed = re.sub(r"[^a-z0-9]+", "", raw_postal.casefold())
+
+                searchable_values = [
+                    store.store_key,
+                    store.name,
+                    store.address,
+                    store.postal_code,
+                    store.locality,
+                    store.state,
+                    store.province,
+                    postal_collapsed,
+                    *postal_parts,
+                ]
+                searchable = " ".join(v for v in searchable_values if v).casefold()
+
+                def _match_term(term: str) -> bool:
+                    term_collapsed = re.sub(r"[^a-z0-9]+", "", term)
+                    return term in searchable or (
+                        bool(term_collapsed) and term_collapsed in searchable
                     )
-                    if value
-                ).casefold()
-                if all(term in searchable for term in terms):
+
+                if all(_match_term(term) for term in terms):
                     stores.append(store)
         return stores
 
