@@ -250,7 +250,8 @@ $body = @{
     redirect_uri  = "com.lidlplus.app://callback"
     code_verifier = "PASTE_VERIFIER_HERE"
 }
-$headers = @{ Authorization = "Basic TGlkbFBsdXNOYXRpdmVDbGllbnQ6c2VjcmV0" }
+$b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("LidlPlusNativeClient:secret"))
+$headers = @{ Authorization = "Basic $b64" }
 (Invoke-RestMethod -Uri "https://accounts.lidl.com/connect/token" -Method Post -Body $body -Headers $headers).refresh_token
 ```
 
