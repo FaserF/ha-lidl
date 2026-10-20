@@ -161,6 +161,7 @@ async def test_options_flow(hass: HomeAssistant) -> None:
         "product_filters": [],
         "auto_activate_coupons": False,
         "skip_special_coupons": True,
+        "filter_local_store": False,
         "card_number": "",
     }
 
@@ -191,6 +192,7 @@ async def test_options_flow_with_product_filters(hass: HomeAssistant) -> None:
         "product_filters": ["milbona", "kaffee"],
         "auto_activate_coupons": False,
         "skip_special_coupons": True,
+        "filter_local_store": False,
         "card_number": "",
     }
 

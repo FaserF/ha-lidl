@@ -213,6 +213,7 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
     """Test fetching V2 coupons, deduplicating IDs and filtering expired/apologize coupons."""
     from custom_components.lidl.const import (
         CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_FILTER_LOCAL_STORE,
         CONF_REFRESH_TOKEN,
         CONF_SKIP_SPECIAL_COUPONS,
     )
@@ -227,6 +228,7 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
         options={
             CONF_AUTO_ACTIVATE_COUPONS: False,
             CONF_SKIP_SPECIAL_COUPONS: False,
+            CONF_FILTER_LOCAL_STORE: True,
         },
     )
     entry.add_to_hass(hass)
@@ -235,6 +237,17 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
 
     mock_v2_response = {
         "sections": [
+            {
+                "name": "Distant Store",
+                "coupons": [
+                    {
+                        "id": "c_v2_distant",
+                        "title": "Distant Store Discount",
+                        "isActivated": False,
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                ],
+            },
             {
                 "name": "AllStores",
                 "coupons": [
@@ -333,10 +346,13 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
         personal_data = coordinator._fetch_personal_data()
         coupons = personal_data["coupons"]
 
-        # Only 3 valid deduplicated coupons: c_v2_store, c_v2_online, c_v1_promo
+        # Only 3 valid deduplicated coupons: c_v2_store, c_v2_online, c_v1_promo (distant store is filtered out)
         assert len(coupons) == 3
         coupon_ids = [c["id"] for c in coupons]
         assert coupon_ids == ["c_v2_store", "c_v2_online", "c_v1_promo"]
+
+        # Check distant store coupon was filtered out
+        assert not any(c["id"] == "c_v2_distant" for c in coupons)
 
         c_online = next(c for c in coupons if c["id"] == "c_v2_online")
         assert c_online["is_online_shop"] is True

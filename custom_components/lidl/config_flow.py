@@ -22,6 +22,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_CARD_NUMBER,
     CONF_COUNTRY,
+    CONF_FILTER_LOCAL_STORE,
     CONF_PRODUCT_FILTERS,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
@@ -666,6 +667,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_SKIP_SPECIAL_COUPONS: bool(
                         user_input.get(CONF_SKIP_SPECIAL_COUPONS, True)
                     ),
+                    CONF_FILTER_LOCAL_STORE: bool(
+                        user_input.get(CONF_FILTER_LOCAL_STORE, False)
+                    ),
                     CONF_CARD_NUMBER: str(user_input.get(CONF_CARD_NUMBER, "")).strip(),
                 },
             )
@@ -681,6 +685,9 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
         )
         current_skip_special = self._config_entry.options.get(
             CONF_SKIP_SPECIAL_COUPONS, True
+        )
+        current_filter_local_store = self._config_entry.options.get(
+            CONF_FILTER_LOCAL_STORE, False
         )
         current_card_number = self._config_entry.options.get(CONF_CARD_NUMBER, "")
         existing_token = self._config_entry.data.get(CONF_REFRESH_TOKEN, "")
@@ -728,6 +735,11 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             ] = bool
             schema_dict[
                 vol.Optional(CONF_SKIP_SPECIAL_COUPONS, default=current_skip_special)
+            ] = bool
+            schema_dict[
+                vol.Optional(
+                    CONF_FILTER_LOCAL_STORE, default=current_filter_local_store
+                )
             ] = bool
 
         schema_dict[vol.Required("action", default="save")] = vol.In(action_choices)
