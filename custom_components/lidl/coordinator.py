@@ -20,6 +20,7 @@ from .const import (
     CONF_AUTO_ACTIVATE_COUPONS,
     CONF_CARD_NUMBER,
     CONF_COUNTRY,
+    CONF_FILTER_LOCAL_STORE,
     CONF_PRODUCT_FILTERS,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
@@ -51,6 +52,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.refresh_token: str | None = config.get(CONF_REFRESH_TOKEN)
         self.auto_activate_coupons: bool = config.get(CONF_AUTO_ACTIVATE_COUPONS, False)
         self.skip_special_coupons: bool = config.get(CONF_SKIP_SPECIAL_COUPONS, True)
+        self.filter_local_store: bool = config.get(CONF_FILTER_LOCAL_STORE, False)
         self.card_number: str | None = config.get(CONF_CARD_NUMBER)
         self.product_filters: list[str] = config.get(CONF_PRODUCT_FILTERS, [])
         self.config_entry = entry
@@ -664,6 +666,16 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 exc,
                                             )
 
+                                if self.filter_local_store:
+                                    if not (
+                                        is_online
+                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name == self.store_key
+                                        or sec_name == self.config_entry.data.get("city")
+                                    ):
+                                        continue
+
                                 seen_ids.add(cid)
                                 coupon_list.append(
                                     {
@@ -799,6 +811,16 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 exc,
                                             )
 
+                                if self.filter_local_store:
+                                    if not (
+                                        is_online
+                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name == self.store_key
+                                        or sec_name == self.config_entry.data.get("city")
+                                    ):
+                                        continue
+
                                 seen_ids.add(cid)
                                 coupon_list.append(
                                     {
@@ -927,6 +949,16 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 cid,
                                                 exc,
                                             )
+
+                                if self.filter_local_store:
+                                    if not (
+                                        is_online
+                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name == self.store_key
+                                        or sec_name == self.config_entry.data.get("city")
+                                    ):
+                                        continue
 
                                 seen_ids.add(cid)
                                 coupon_list.append(
@@ -1104,11 +1136,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         else []
                     )
                     for s in sections:
+                        sec_name = s.get("name") or s.get("title") or s.get("header") or "AllStores"
                         for c in s.get("promotions", []) + s.get("coupons", []):
                             cid = str(c.get("id") or c.get("promotionId", "")).strip()
                             if not cid or cid in seen_ids:
                                 continue
-                            seen_ids.add(cid)
 
                             avail = c.get("availability", {})
                             if (
@@ -1116,6 +1148,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 and avail.get("apologizeStatus", False)
                             ) or c.get("apologizeStatus", False):
                                 continue
+
+                            if self.filter_local_store:
+                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                if not (
+                                    is_online
+                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name == self.config_entry.data.get("name")
+                                    or sec_name == self.store_key
+                                    or sec_name == self.config_entry.data.get("city")
+                                ):
+                                    continue
+
+                            seen_ids.add(cid)
 
                             validity = c.get("validity", {})
                             start_raw = (
@@ -1196,11 +1241,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         v2_data.get("sections", []) if isinstance(v2_data, dict) else []
                     )
                     for s in v2_sections:
+                        sec_name = s.get("name") or s.get("title") or "AllStores"
                         for c in s.get("coupons", []):
                             cid = str(c.get("id", "")).strip()
                             if not cid or cid in seen_ids:
                                 continue
-                            seen_ids.add(cid)
 
                             avail = c.get("availability", {})
                             if (
@@ -1208,6 +1253,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 and avail.get("apologizeStatus", False)
                             ) or c.get("apologizeStatus", False):
                                 continue
+
+                            if self.filter_local_store:
+                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                if not (
+                                    is_online
+                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name == self.config_entry.data.get("name")
+                                    or sec_name == self.store_key
+                                    or sec_name == self.config_entry.data.get("city")
+                                ):
+                                    continue
+
+                            seen_ids.add(cid)
 
                             validity = c.get("validity", {})
                             start_raw = (
@@ -1288,11 +1346,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         c_data.get("sections", []) if isinstance(c_data, dict) else []
                     )
                     for s in sections:
+                        sec_name = s.get("name") or s.get("title") or "AllStores"
                         for c in s.get("coupons", []) + s.get("promotions", []):
                             cid = str(c.get("id") or c.get("promotionId", "")).strip()
                             if not cid or cid in seen_ids:
                                 continue
-                            seen_ids.add(cid)
 
                             avail = c.get("availability", {})
                             if (
@@ -1300,6 +1358,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 and avail.get("apologizeStatus", False)
                             ) or c.get("apologizeStatus", False):
                                 continue
+
+                            if self.filter_local_store:
+                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                if not (
+                                    is_online
+                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name == self.config_entry.data.get("name")
+                                    or sec_name == self.store_key
+                                    or sec_name == self.config_entry.data.get("city")
+                                ):
+                                    continue
+
+                            seen_ids.add(cid)
 
                             validity = c.get("validity", {})
                             start_raw = (

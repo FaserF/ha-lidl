@@ -11,6 +11,7 @@ CONF_UPDATE_INTERVAL = "update_interval"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_AUTO_ACTIVATE_COUPONS = "auto_activate_coupons"
 CONF_SKIP_SPECIAL_COUPONS = "skip_special_coupons"
+CONF_FILTER_LOCAL_STORE = "filter_local_store"
 CONF_CARD_NUMBER = "card_number"
 CONF_PRODUCT_FILTERS = "product_filters"
 
