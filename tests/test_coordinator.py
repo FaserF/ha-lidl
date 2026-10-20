@@ -129,7 +129,6 @@ async def test_coordinator_auto_activate_coupons(
         CONF_AUTO_ACTIVATE_COUPONS,
         CONF_REFRESH_TOKEN,
         CONF_SKIP_SPECIAL_COUPONS,
-        CONF_FILTER_LOCAL_STORE,
     )
 
     entry = MockConfigEntry(
@@ -214,9 +213,9 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
     """Test fetching V2 coupons, deduplicating IDs and filtering expired/apologize coupons."""
     from custom_components.lidl.const import (
         CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_FILTER_LOCAL_STORE,
         CONF_REFRESH_TOKEN,
         CONF_SKIP_SPECIAL_COUPONS,
-            CONF_FILTER_LOCAL_STORE,
     )
 
     entry = MockConfigEntry(
@@ -351,7 +350,7 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
         assert len(coupons) == 3
         coupon_ids = [c["id"] for c in coupons]
         assert coupon_ids == ["c_v2_store", "c_v2_online", "c_v1_promo"]
-        
+
         # Check distant store coupon was filtered out
         assert not any(c["id"] == "c_v2_distant" for c in coupons)
 

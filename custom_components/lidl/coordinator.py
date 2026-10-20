@@ -669,10 +669,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 if self.filter_local_store:
                                     if not (
                                         is_online
-                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
-                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name.lower()
+                                        in (
+                                            "allstores",
+                                            "onlineshop",
+                                            "online",
+                                            "promotions",
+                                            "personalizedsection",
+                                        )
+                                        or sec_name
+                                        == self.config_entry.data.get("name")
                                         or sec_name == self.store_key
-                                        or sec_name == self.config_entry.data.get("city")
+                                        or sec_name
+                                        == self.config_entry.data.get("city")
                                     ):
                                         continue
 
@@ -814,10 +823,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 if self.filter_local_store:
                                     if not (
                                         is_online
-                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
-                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name.lower()
+                                        in (
+                                            "allstores",
+                                            "onlineshop",
+                                            "online",
+                                            "promotions",
+                                            "personalizedsection",
+                                        )
+                                        or sec_name
+                                        == self.config_entry.data.get("name")
                                         or sec_name == self.store_key
-                                        or sec_name == self.config_entry.data.get("city")
+                                        or sec_name
+                                        == self.config_entry.data.get("city")
                                     ):
                                         continue
 
@@ -953,10 +971,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 if self.filter_local_store:
                                     if not (
                                         is_online
-                                        or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
-                                        or sec_name == self.config_entry.data.get("name")
+                                        or sec_name.lower()
+                                        in (
+                                            "allstores",
+                                            "onlineshop",
+                                            "online",
+                                            "promotions",
+                                            "personalizedsection",
+                                        )
+                                        or sec_name
+                                        == self.config_entry.data.get("name")
                                         or sec_name == self.store_key
-                                        or sec_name == self.config_entry.data.get("city")
+                                        or sec_name
+                                        == self.config_entry.data.get("city")
                                     ):
                                         continue
 
@@ -1136,7 +1163,12 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         else []
                     )
                     for s in sections:
-                        sec_name = s.get("name") or s.get("title") or s.get("header") or "AllStores"
+                        sec_name = (
+                            s.get("name")
+                            or s.get("title")
+                            or s.get("header")
+                            or "AllStores"
+                        )
                         for c in s.get("promotions", []) + s.get("coupons", []):
                             cid = str(c.get("id") or c.get("promotionId", "")).strip()
                             if not cid or cid in seen_ids:
@@ -1150,10 +1182,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 continue
 
                             if self.filter_local_store:
-                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                is_online = bool(
+                                    c.get("isOnlineShop", False)
+                                ) or sec_name.lower() in ("onlineshop", "online")
                                 if not (
                                     is_online
-                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name.lower()
+                                    in (
+                                        "allstores",
+                                        "onlineshop",
+                                        "online",
+                                        "promotions",
+                                        "personalizedsection",
+                                    )
                                     or sec_name == self.config_entry.data.get("name")
                                     or sec_name == self.store_key
                                     or sec_name == self.config_entry.data.get("city")
@@ -1255,10 +1296,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 continue
 
                             if self.filter_local_store:
-                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                is_online = bool(
+                                    c.get("isOnlineShop", False)
+                                ) or sec_name.lower() in ("onlineshop", "online")
                                 if not (
                                     is_online
-                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name.lower()
+                                    in (
+                                        "allstores",
+                                        "onlineshop",
+                                        "online",
+                                        "promotions",
+                                        "personalizedsection",
+                                    )
                                     or sec_name == self.config_entry.data.get("name")
                                     or sec_name == self.store_key
                                     or sec_name == self.config_entry.data.get("city")
@@ -1360,10 +1410,19 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 continue
 
                             if self.filter_local_store:
-                                is_online = bool(c.get("isOnlineShop", False)) or sec_name.lower() in ("onlineshop", "online")
+                                is_online = bool(
+                                    c.get("isOnlineShop", False)
+                                ) or sec_name.lower() in ("onlineshop", "online")
                                 if not (
                                     is_online
-                                    or sec_name.lower() in ("allstores", "onlineshop", "online", "promotions", "personalizedsection")
+                                    or sec_name.lower()
+                                    in (
+                                        "allstores",
+                                        "onlineshop",
+                                        "online",
+                                        "promotions",
+                                        "personalizedsection",
+                                    )
                                     or sec_name == self.config_entry.data.get("name")
                                     or sec_name == self.store_key
                                     or sec_name == self.config_entry.data.get("city")
