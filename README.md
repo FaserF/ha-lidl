@@ -1,8 +1,8 @@
-<div align="center">
+﻿<div align="center">
   <h1>Lidl Weekly Offers (for Home Assistant) 🛒</h1>
   <p><strong>A secure, robust Home Assistant integration that fetches weekly offers, discounts, upcoming deal previews, coupons, and digital receipts for your local Lidl store directly from the official Lidl Plus API.</strong></p>
 
-  [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://hacs.xyz)
+  [![Home Assistant Marketplace](https://img.shields.io/badge/Home_Assistant-Marketplace-41BDF5.svg?style=for-the-badge&logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
   [![Downloads (Current release)](https://img.shields.io/github/downloads/FaserF/ha-lidl/latest/lidl.zip?label=Downloads%20(Current%20release)&style=for-the-badge)](https://github.com/FaserF/ha-lidl/releases)
   [![GitHub Release](https://img.shields.io/github/v/release/FaserF/ha-lidl?style=for-the-badge)](https://github.com/FaserF/ha-lidl/releases)
   [![License](https://img.shields.io/github/license/FaserF/ha-lidl?style=for-the-badge)](LICENSE)
@@ -89,25 +89,25 @@ It groups all sensors under a single market device and implements advanced lock-
 
 | Device / Service | Integration Use Case | Link |
 | :--- | :--- | :--- |
-| **Home Assistant Green & Offizielle Smart-Home-Hardware** | Empfohlene Hardware-Basis für lokale Home Assistant Integrationen | [Offizielle Geräte-Seite →](https://fabiseitz.de/go/ha-hardware) |
-| **Home Assistant Connect ZBT-1 (Zigbee / Thread)** | Lokales Zigbee2MQTT, ZHA & Matter-over-Thread Funknetz | [Offizielle Geräte-Seite →](https://fabiseitz.de/go/ha-zigbee) |
+| **Home Assistant Green & Official Hardware** | Recommended hardware foundation for local Home Assistant integrations | [Official Device Page →](https://fabiseitz.de/go/ha-hardware) |
+| **Home Assistant Connect ZBT-1 (Zigbee / Thread)** | Local Zigbee2MQTT, ZHA & Matter-over-Thread wireless mesh | [Official Device Page →](https://fabiseitz.de/go/ha-zigbee) |
 
 
 ---
 
 ## 📦 Installation
 
-### HACS (Recommended)
+### Home Assistant Marketplace (Recommended)
 
-This integration is fully compatible with [HACS](https://hacs.xyz/).
+This integration is available via the official Home Assistant **Marketplace** (HA 2026.11+) or as a custom repository.
 
-1. Open HACS in Home Assistant.
+1. Open Marketplace in Home Assistant.
 2. Click on the three dots in the top right corner and select **Custom repositories**.
 3. Add `FaserF/ha-lidl` with category **Integration**.
 4. Search for "Lidl Weekly Offers".
 5. Install and restart Home Assistant.
 
-[![Open HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=FaserF&repository=ha-lidl&category=integration)
+[![Open Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=FaserF&repository=ha-lidl&category=integration)
 
 ### Manual Installation
 
