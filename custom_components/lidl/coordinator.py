@@ -1599,16 +1599,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "LIDL RECEIPTS: JSON %s",
                 detail_data,
             )
-            if isinstance(detail_data.get("itemsLine"), list):
-                for item in detail_data["itemsLine"]:
-                    items.append({
-                        "name": item.get("name"),
-                        "code": item.get("codeInput"),
-                        "quantity": item.get("quantity", 1),
-                        "unit_price": item.get("currentUnitPrice"),
-                        "total": item.get("originalAmount"),
-                    })
-            elif detail_data.get("htmlPrintedReceipt"):
+            if detail_data.get("htmlPrintedReceipt"):
                 from html.parser import HTMLParser
                 from html import unescape
 
