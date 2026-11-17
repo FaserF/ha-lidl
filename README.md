@@ -50,6 +50,8 @@ It groups all sensors under a single market device and implements advanced lock-
   - **Activated & Available Coupons**: Sensors for currently active and available coupons, broken down by store vs. online shop coupons.
   - **Activate All Coupons**: A button entity to activate every available coupon with a single tap.
   - **Last Receipt**: Shows total amount, date, store code, article count, and redeemed coupon counts.
+  - **All receipts**: Returns a list of receipt ids for all receipts on an account.
+  - **Receipt Details Endpoint**: Make an API request to ```/api/lidl/{{entryId}}/receipts/{{receiptId}}``` to get the receipt details as json. enrtyId is the id of the entity in HomeAssistant.
 - **📱 Single Lidl Plus Account Device per Country**:
   - All account-level entities (`Loyalty Card QR Code`, `Activated Coupons`, `Available Coupons`, `Last Receipt`, `Activate All Coupons`) are grouped under a dedicated **Lidl Plus Account (DE)** device.
   - Features a direct **Visit Lidl Plus Account** button taking you directly to your web account management portal.

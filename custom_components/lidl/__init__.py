@@ -25,6 +25,8 @@ from .const import (
 )
 from .coordinator import LidlDataUpdateCoordinator
 
+from .views import LidlReceiptView
+
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -260,6 +262,12 @@ async def async_setup_entry(
             hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_ha_started)
 
     _LOGGER.debug("Finished setting up Lidl Weekly Offers entry: %s", entry.entry_id)
+
+
+    if not hass.data[DOMAIN].get("_receipt_view_registered"):
+        hass.http.register_view(LidlReceiptView(hass))
+        hass.data[DOMAIN]["_receipt_view_registered"] = True
+
     return True
 
 

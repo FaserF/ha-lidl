@@ -550,3 +550,250 @@ async def test_activate_all_coupons_with_home_logged(
 
         activated_count = coordinator.activate_all_coupons()
         assert activated_count == 1
+
+async def test_fetch_all_receipts_pagination(hass: HomeAssistant) -> None:
+    """Test fetching all receipts across multiple pages with deduplication."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            "refresh_token": "mock_refresh",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    headers = {"Authorization": "Bearer mock_access"}
+
+    page_1 = {
+        "tickets": [
+            {"id": "r1", "totalAmount": 7.77},
+            {"id": "r2", "totalAmount": 12.49},
+        ],
+        "totalCount": 3,
+    }
+
+    page_2 = {
+        "tickets": [
+            {"id": "r2", "totalAmount": 12.49},  # Duplicate
+            {"id": "r3", "totalAmount": 5.99},
+        ],
+        "totalCount": 3,
+    }
+
+    class MockResponse:
+        def __init__(self, json_data):
+            self._json_data = json_data
+
+        def json(self):
+            return self._json_data
+
+        def raise_for_status(self):
+            pass
+
+    with patch("curl_cffi.requests.get") as mock_get:
+        mock_get.side_effect = [
+            MockResponse(page_1),
+            MockResponse(page_2),
+        ]
+
+        receipts = coordinator._fetch_all_receipts(headers)
+
+        assert len(receipts) == 3
+        assert [r["id"] for r in receipts] == ["r1", "r2", "r3"]
+
+        assert mock_get.call_count == 2
+
+        # Check pagination parameters
+        assert mock_get.call_args_list[0].kwargs["params"] == {
+            "pageNumber": 1,
+            "onlyFavorite": "false",
+        }
+        assert mock_get.call_args_list[1].kwargs["params"] == {
+            "pageNumber": 2,
+            "onlyFavorite": "false",
+        }
+
+        # Check headers are passed correctly
+        assert mock_get.call_args_list[0].kwargs["headers"] == headers
+
+async def test_fetch_all_receipts_stopping_conditions(
+    hass: HomeAssistant,
+) -> None:
+    """Test receipt pagination stops on empty or duplicate-only pages."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    headers = {"Authorization": "Bearer mock_access"}
+
+    class MockResponse:
+        def __init__(self, json_data):
+            self._json_data = json_data
+
+        def json(self):
+            return self._json_data
+
+        def raise_for_status(self):
+            pass
+
+    with patch("curl_cffi.requests.get") as mock_get:
+        mock_get.side_effect = [
+            MockResponse({
+                "tickets": [
+                    {"id": "r1"},
+                    {"id": ""},
+                    {"id": "   "},
+                ],
+                "totalCount": 10,
+            }),
+            MockResponse({
+                "tickets": [
+                    {"id": "r1"},  # Duplicate-only page
+                ],
+                "totalCount": 10,
+            }),
+        ]
+
+        receipts = coordinator._fetch_all_receipts(headers)
+
+        assert len(receipts) == 1
+        assert receipts[0]["id"] == "r1"
+        assert mock_get.call_count == 2
+
+async def test_fetch_receipt_details_html_receipt(
+    hass: HomeAssistant,
+) -> None:
+    """Test fetching receipt details from HTML printed receipt."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            "refresh_token": "mock_refresh",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    coordinator.data = {
+        "receipts": [
+            {"id": "r1"},
+        ]
+    }
+
+    mock_detail = {
+        "date": "2026-11-12T08:11:56",
+        "store": {
+            "id": "DE3965",
+            "name": "Zorneding",
+        },
+        "htmlPrintedReceipt": """
+            <html>
+                <body>
+                    <span class="article"
+                        data-art-description="Milk &amp; Cream"
+                        data-art-id="123456"
+                        data-art-quantity="2"
+                        data-unit-price="1.29 €">
+                    </span>
+                    <span class="article"
+                        data-art-description="Bread"
+                        data-art-id="654321"
+                        data-unit-price="1.49 €">
+                    </span>
+                    <span class="other"
+                        data-art-description="Ignored Item">
+                    </span>
+                </body>
+            </html>
+        """,
+    }
+
+    class MockResponse:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return mock_detail
+
+    with (
+        patch.object(
+            coordinator,
+            "_get_access_and_id_token",
+            return_value=("mock_access", "mock_id"),
+        ),
+        patch("curl_cffi.requests.get", return_value=MockResponse()),
+    ):
+        result = coordinator.fetch_receipt_details("r1")
+
+        assert result["id"] == "r1"
+        assert result["date"] == "2026-11-12T08:11:56"
+        assert result["store"] == "Zorneding"
+        assert result["store_code"] == "DE3965"
+
+        assert len(result["items"]) == 2
+
+        assert result["items"][0] == {
+            "name": "Milk & Cream",
+            "code": "123456",
+            "quantity": "2",
+            "unit_price": "1.29 €",
+        }
+
+        assert result["items"][1] == {
+            "name": "Bread",
+            "code": "654321",
+            "quantity": "1",
+            "unit_price": "1.49 €",
+        }
+
+async def test_fetch_receipt_details_validation(
+    hass: HomeAssistant,
+) -> None:
+    """Test receipt details authentication and receipt ID validation."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+
+    # No refresh token
+    with pytest.raises(
+        ValueError,
+        match="Lidl Plus authentication is required",
+    ):
+        coordinator.fetch_receipt_details("r1")
+
+    # Refresh token present, but receipt ID unknown
+    coordinator.refresh_token = "mock_refresh"
+    coordinator.data = {
+        "receipts": [
+            {"id": "r1"},
+        ]
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Unknown receipt ID: r2",
+    ):
+        coordinator.fetch_receipt_details("r2")

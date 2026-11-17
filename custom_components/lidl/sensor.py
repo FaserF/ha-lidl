@@ -45,6 +45,8 @@ async def async_setup_entry(
                 LidlActivatedCouponsSensor(coordinator),
                 LidlAvailableCouponsSensor(coordinator),
                 LidlLastReceiptSensor(coordinator),
+                LidlReceiptsSensor(coordinator),
+
             ]
 
     active_slugs = set()
@@ -502,3 +504,46 @@ class LidlLastReceiptSensor(CoordinatorEntity[LidlDataUpdateCoordinator], Sensor
             self.coordinator.data is not None
             and "last_receipt" in self.coordinator.data
         )
+
+
+class LidlReceiptsSensor(CoordinatorEntity[LidlDataUpdateCoordinator], SensorEntity):
+    """Represents all Lidl Plus receipts."""
+
+    _attr_icon = "mdi:receipt-text-multiple"
+    _attr_has_entity_name = True
+    _attr_name = "Receipts"
+
+    def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
+        """Initialize sensor."""
+        super().__init__(coordinator)
+
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_receipts"
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
+            manufacturer="Lidl",
+            model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
+        )
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of receipts."""
+        return len((self.coordinator.data or {}).get("receipts", []))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose receipt IDs."""
+        data = self.coordinator.data or {}
+
+        return {
+            "receipt_ids": data.get("receipt_ids", []),
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return availability."""
+        return self.coordinator.data is not None and "receipts" in self.coordinator.data

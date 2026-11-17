@@ -1495,3 +1495,158 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.error("Failed to activate Lidl Plus coupons: %s", exc)
 
         return activated
+    
+    def _fetch_all_receipts(self, headers: dict[str, str]) -> list[dict[str, Any]]:
+        """Fetch all Lidl Plus receipt summaries."""
+        from curl_cffi import requests
+
+        receipts: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        page = 1
+        max_pages = 1000
+
+        while page <= max_pages:
+            response = requests.get(
+                f"https://tickets.lidlplus.com/api/v2/{self.country}/tickets",
+                params={
+                    "pageNumber": page,
+                    "onlyFavorite": "false",
+                },
+                headers=headers,
+                impersonate="chrome110",
+                timeout=15,
+            )
+            
+            # _LOGGER.warning("Lidl Plus receipt retrieval DEBUG test")
+            # _LOGGER.warning(headers)
+            response.raise_for_status()
+
+            data = response.json()
+            page_receipts = data.get("tickets", [])
+
+            if not page_receipts:
+                break
+
+            new_receipts = []
+
+            for receipt in page_receipts:
+                receipt_id = str(receipt.get("id", "")).strip()
+
+                if not receipt_id or receipt_id in seen_ids:
+                    continue
+
+                seen_ids.add(receipt_id)
+                new_receipts.append(receipt)
+                receipts.append(receipt)
+
+            # Prevent infinite pagination if the API repeats a page.
+            if not new_receipts:
+                break
+
+            total_count = data.get("totalCount")
+            if total_count is not None and len(receipts) >= int(total_count):
+                break
+
+            page += 1
+
+        _LOGGER.info(
+            "Retrieved %d Lidl Plus receipts for account %s",
+            len(receipts),
+            self.country,
+        )
+
+        return receipts
+   
+    def fetch_receipt_details(self, receipt_id: str) -> dict[str, Any]:
+        """Fetch full Lidl receipt details and structured line items."""
+        from decimal import Decimal, InvalidOperation
+
+        from curl_cffi import requests
+
+        if not self.refresh_token:
+            raise ValueError("Lidl Plus authentication is required")
+
+        known_ids = {
+            str(receipt.get("id"))
+            for receipt in (self.data or {}).get("receipts", [])
+        }
+
+        if receipt_id not in known_ids:
+            raise ValueError(f"Unknown receipt ID: {receipt_id}")
+
+        access_token, _ = self._get_access_and_id_token()
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Accept-Language": "en",
+            "App-Version": "17.0.5",
+            "Operating-System": "Android",
+            "App": "com.lidlplus.app",
+            "Country": self.country,
+        }
+
+
+        r_detail = requests.get(
+            f"https://tickets.lidlplus.com/api/v3/{self.country}/tickets/{receipt_id}",
+            headers=headers,
+            impersonate="chrome110",
+            timeout=15,
+        )
+        items = []
+        if r_detail.status_code == 200:
+            detail_data = r_detail.json()
+            _LOGGER.warning(
+                "LIDL RECEIPTS: JSON %s",
+                detail_data,
+            )
+            if detail_data.get("htmlPrintedReceipt"):
+                from html.parser import HTMLParser
+                from html import unescape
+
+                class ReceiptParser(HTMLParser):
+                    def __init__(self):
+                        super().__init__()
+                        self.items = []
+
+                    def handle_starttag(self, tag, attrs):
+                        if tag.lower() != "span":
+                            return
+
+                        attrs = dict(attrs)
+
+                        if "article" not in attrs.get("class", "").split():
+                            return
+
+                        name = attrs.get("data-art-description")
+
+                        if name:
+                            self.items.append({
+                                "name": unescape(name),
+                                "code": attrs.get("data-art-id"),
+                                "quantity": attrs.get("data-art-quantity", "1"),
+                                "unit_price": attrs.get("data-unit-price"),
+                            })
+
+                parser = ReceiptParser()
+                parser.feed(detail_data["htmlPrintedReceipt"])
+                items = parser.items
+
+                return {
+                    "id": receipt_id,
+                    "date": detail_data.get("date"),
+                    "store": detail_data.get("store", {}).get("name") or detail_data.get("store", {}).get("id"),
+                    "store_code": detail_data.get("store", {}).get("id"),
+                    # "total": total_val,
+                    # "currency": curr_code,
+                    # "total_amount_formatted": formatted_total,
+                    # "articles_count": latest.get("articlesCount", 0),
+                    # "coupons_used_count": latest.get("couponsUsedCount", 0),
+                    "items": items,
+                }
+
+        else:
+            _LOGGER.error(
+                "LIDL RECEIPTS: Detail request failed: %s",
+                r_detail.text[:1000],
+            )
+        return {}

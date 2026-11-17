@@ -306,3 +306,56 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
         assert pizza_state.attributes["best_price"] is None
         assert pizza_state.attributes["product_title"] is None
         assert len(pizza_state.attributes["matches"]) == 0
+
+async def test_receipts_sensor(hass: HomeAssistant) -> None:
+    """Test Lidl Plus receipts sensor attributes."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Lidl Store 123",
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            "refresh_token": "mock_refresh_token",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    mock_data = {
+        "offers": [],
+        "preview_offers": [],
+        "receipts": [
+            {
+                "id": "r1",
+                "date": "2026-11-12T08:11:56",
+                "total": 7.77,
+                "currency": "EUR",
+            },
+            {
+                "id": "r2",
+                "date": "2026-11-10T14:25:32",
+                "total": 12.49,
+                "currency": "EUR",
+            },
+            {
+                "id": "r3",
+                "date": "2026-11-08T09:15:00",
+                "total": 5.99,
+                "currency": "EUR",
+            },
+        ],
+        "receipt_ids": ["r1", "r2", "r3"],
+    }
+
+    with patch(
+        "custom_components.lidl.coordinator.LidlDataUpdateCoordinator._async_update_data",
+        return_value=mock_data,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.lidl_plus_account_de_receipts")
+
+        assert state is not None
+        assert state.state == "3"
+        assert state.attributes["receipt_ids"] == ["r1", "r2", "r3"]
