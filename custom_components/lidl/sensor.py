@@ -366,8 +366,11 @@ class LidlActivatedCouponsSensor(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details of activated coupons."""
+        activated = self._activated_coupons
+        local_coupons = [c for c in activated if c.get("is_local_store", True)]
         attrs: dict[str, Any] = {
-            "coupons": self._activated_coupons,
+            "coupons": activated,
+            "local_coupons_count": len(local_coupons),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
         if hasattr(self.coordinator, "last_activation_result"):
@@ -396,6 +399,7 @@ class LidlAvailableCouponsSensor(
             "online_coupons",
             "special_coupons",
             "standard_coupons",
+            "local_coupons",
         }
     )
 
@@ -435,6 +439,7 @@ class LidlAvailableCouponsSensor(
         online_coupons = [c for c in available if c.get("is_online_shop", False)]
         special_coupons = [c for c in available if c.get("is_special", False)]
         standard_coupons = [c for c in available if not c.get("is_special", False)]
+        local_coupons = [c for c in available if c.get("is_local_store", True)]
 
         return {
             "coupons": available,
@@ -442,10 +447,12 @@ class LidlAvailableCouponsSensor(
             "online_coupons": online_coupons,
             "special_coupons": special_coupons,
             "standard_coupons": standard_coupons,
+            "local_coupons": local_coupons,
             "store_coupons_count": len(store_coupons),
             "online_coupons_count": len(online_coupons),
             "special_coupons_count": len(special_coupons),
             "standard_coupons_count": len(standard_coupons),
+            "local_coupons_count": len(local_coupons),
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 

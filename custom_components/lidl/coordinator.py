@@ -200,6 +200,55 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         token_prefix = self.refresh_token[:16]
         return f"account_{self.country.lower()}_{token_prefix}"
 
+    def _is_coupon_for_store(
+        self,
+        c: dict[str, Any],
+        sec_name: str,
+        is_online: bool,
+    ) -> tuple[bool, list[str]]:
+        """Return whether coupon matches the local store, and list of specific store IDs."""
+        raw_stores = (
+            c.get("stores")
+            or c.get("storeIds")
+            or c.get("storeKeys")
+            or c.get("storeList")
+            or []
+        )
+        store_ids: list[str] = []
+        if isinstance(raw_stores, list):
+            for st in raw_stores:
+                if isinstance(st, dict):
+                    s_val = st.get("id") or st.get("storeId") or st.get("key")
+                else:
+                    s_val = st
+                if s_val:
+                    store_ids.append(str(s_val).strip())
+
+        is_store_match = (not store_ids) or (self.store_key in store_ids)
+
+        if is_online:
+            return True, store_ids
+
+        if store_ids and not is_store_match:
+            return False, store_ids
+
+        sec_lower = sec_name.lower()
+        if sec_lower in (
+            "allstores",
+            "onlineshop",
+            "online",
+            "promotions",
+            "personalizedsection",
+        ):
+            return True, store_ids
+
+        name = self.config_entry.data.get("name")
+        city = self.config_entry.data.get("city")
+        if sec_name in (name, self.store_key, city):
+            return True, store_ids
+
+        return False, store_ids
+
     @property
     def is_data_valid(self) -> bool:
         """Return True if cached data is still valid for the current week (until Sunday 23:59:59)."""
@@ -704,24 +753,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 exc,
                                             )
 
-                                if self.filter_local_store:
-                                    if not (
-                                        is_online
-                                        or sec_name.lower()
-                                        in (
-                                            "allstores",
-                                            "onlineshop",
-                                            "online",
-                                            "promotions",
-                                            "personalizedsection",
-                                        )
-                                        or sec_name
-                                        == self.config_entry.data.get("name")
-                                        or sec_name == self.store_key
-                                        or sec_name
-                                        == self.config_entry.data.get("city")
-                                    ):
-                                        continue
+                                is_store_match, store_ids = self._is_coupon_for_store(
+                                    c, sec_name, is_online
+                                )
+                                if self.filter_local_store and not is_store_match:
+                                    continue
 
                                 seen_ids.add(cid)
                                 coupon_list.append(
@@ -740,6 +776,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         "section": sec_name,
                                         "is_online_shop": is_online,
                                         "is_special": is_special,
+                                        "is_local_store": is_store_match,
+                                        "store_ids": store_ids,
                                     }
                                 )
                 except Exception as exc:  # noqa: BLE001
@@ -866,24 +904,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 exc,
                                             )
 
-                                if self.filter_local_store:
-                                    if not (
-                                        is_online
-                                        or sec_name.lower()
-                                        in (
-                                            "allstores",
-                                            "onlineshop",
-                                            "online",
-                                            "promotions",
-                                            "personalizedsection",
-                                        )
-                                        or sec_name
-                                        == self.config_entry.data.get("name")
-                                        or sec_name == self.store_key
-                                        or sec_name
-                                        == self.config_entry.data.get("city")
-                                    ):
-                                        continue
+                                is_store_match, store_ids = self._is_coupon_for_store(
+                                    c, sec_name, is_online
+                                )
+                                if self.filter_local_store and not is_store_match:
+                                    continue
 
                                 seen_ids.add(cid)
                                 coupon_list.append(
@@ -902,6 +927,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         "section": sec_name,
                                         "is_online_shop": is_online,
                                         "is_special": is_special,
+                                        "is_local_store": is_store_match,
+                                        "store_ids": store_ids,
                                     }
                                 )
                 except Exception as exc:  # noqa: BLE001
@@ -1022,24 +1049,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                 exc,
                                             )
 
-                                if self.filter_local_store:
-                                    if not (
-                                        is_online
-                                        or sec_name.lower()
-                                        in (
-                                            "allstores",
-                                            "onlineshop",
-                                            "online",
-                                            "promotions",
-                                            "personalizedsection",
-                                        )
-                                        or sec_name
-                                        == self.config_entry.data.get("name")
-                                        or sec_name == self.store_key
-                                        or sec_name
-                                        == self.config_entry.data.get("city")
-                                    ):
-                                        continue
+                                is_store_match, store_ids = self._is_coupon_for_store(
+                                    c, sec_name, is_online
+                                )
+                                if self.filter_local_store and not is_store_match:
+                                    continue
 
                                 seen_ids.add(cid)
                                 coupon_list.append(
@@ -1056,6 +1070,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         "section": sec_name,
                                         "is_online_shop": is_online,
                                         "is_special": is_special,
+                                        "is_local_store": is_store_match,
+                                        "store_ids": store_ids,
                                     }
                                 )
                 except Exception as exc:  # noqa: BLE001
@@ -1242,25 +1258,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             ) or c.get("apologizeStatus", False):
                                 continue
 
-                            if self.filter_local_store:
-                                is_online = bool(
-                                    c.get("isOnlineShop", False)
-                                ) or sec_name.lower() in ("onlineshop", "online")
-                                if not (
-                                    is_online
-                                    or sec_name.lower()
-                                    in (
-                                        "allstores",
-                                        "onlineshop",
-                                        "online",
-                                        "promotions",
-                                        "personalizedsection",
-                                    )
-                                    or sec_name == self.config_entry.data.get("name")
-                                    or sec_name == self.store_key
-                                    or sec_name == self.config_entry.data.get("city")
-                                ):
-                                    continue
+                            is_online = bool(
+                                c.get("isOnlineShop", False)
+                            ) or sec_name.lower() in ("onlineshop", "online")
+                            is_store_match, _ = self._is_coupon_for_store(
+                                c, sec_name, is_online
+                            )
+                            if self.filter_local_store and not is_store_match:
+                                continue
 
                             seen_ids.add(cid)
 
@@ -1382,25 +1387,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             ) or c.get("apologizeStatus", False):
                                 continue
 
-                            if self.filter_local_store:
-                                is_online = bool(
-                                    c.get("isOnlineShop", False)
-                                ) or sec_name.lower() in ("onlineshop", "online")
-                                if not (
-                                    is_online
-                                    or sec_name.lower()
-                                    in (
-                                        "allstores",
-                                        "onlineshop",
-                                        "online",
-                                        "promotions",
-                                        "personalizedsection",
-                                    )
-                                    or sec_name == self.config_entry.data.get("name")
-                                    or sec_name == self.store_key
-                                    or sec_name == self.config_entry.data.get("city")
-                                ):
-                                    continue
+                            is_online = bool(
+                                c.get("isOnlineShop", False)
+                            ) or sec_name.lower() in ("onlineshop", "online")
+                            is_store_match, _ = self._is_coupon_for_store(
+                                c, sec_name, is_online
+                            )
+                            if self.filter_local_store and not is_store_match:
+                                continue
 
                             seen_ids.add(cid)
 
@@ -1522,25 +1516,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             ) or c.get("apologizeStatus", False):
                                 continue
 
-                            if self.filter_local_store:
-                                is_online = bool(
-                                    c.get("isOnlineShop", False)
-                                ) or sec_name.lower() in ("onlineshop", "online")
-                                if not (
-                                    is_online
-                                    or sec_name.lower()
-                                    in (
-                                        "allstores",
-                                        "onlineshop",
-                                        "online",
-                                        "promotions",
-                                        "personalizedsection",
-                                    )
-                                    or sec_name == self.config_entry.data.get("name")
-                                    or sec_name == self.store_key
-                                    or sec_name == self.config_entry.data.get("city")
-                                ):
-                                    continue
+                            is_online = bool(
+                                c.get("isOnlineShop", False)
+                            ) or sec_name.lower() in ("onlineshop", "online")
+                            is_store_match, _ = self._is_coupon_for_store(
+                                c, sec_name, is_online
+                            )
+                            if self.filter_local_store and not is_store_match:
+                                continue
 
                             seen_ids.add(cid)
 

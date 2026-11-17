@@ -66,6 +66,7 @@
           "card_number": "Lidl Plus Card Barcode Number (e.g. 77490003422453494)",
           "auto_activate_coupons": "Automatically activate coupons in background",
           "skip_special_coupons": "Skip special product selection coupons (Default: Yes)",
+          "filter_local_store": "Filter coupons to only include local store and online offers",
           "action": "Action"
         }
       },

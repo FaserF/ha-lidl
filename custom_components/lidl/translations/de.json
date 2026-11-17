@@ -66,6 +66,7 @@
           "card_number": "Lidl Plus Kartennummer (z. B. 77490003422453494)",
           "auto_activate_coupons": "Coupons automatisch im Hintergrund aktivieren",
           "skip_special_coupons": "Spezielle Auswahl-Coupons überspringen (Standard: Ja)",
+          "filter_local_store": "Coupons auf lokale Filiale und Online-Shop beschränken",
           "action": "Aktion"
         }
       },

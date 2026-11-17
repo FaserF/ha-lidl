@@ -259,6 +259,13 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
                         "validity": {"start": "2020-01-01", "end": "2099-12-31"},
                     },
                     {
+                        "id": "c_v2_distant_store_key",
+                        "title": "Reopening Store Promo",
+                        "isActivated": False,
+                        "stores": ["ES9999"],
+                        "validity": {"start": "2020-01-01", "end": "2099-12-31"},
+                    },
+                    {
                         "id": "c_v2_expired",
                         "title": "Old Coupon",
                         "isActivated": False,
@@ -353,6 +360,7 @@ async def test_fetch_v2_and_v1_coupons_deduplication_and_filtering(
 
         # Check distant store coupon was filtered out
         assert not any(c["id"] == "c_v2_distant" for c in coupons)
+        assert not any(c["id"] == "c_v2_distant_store_key" for c in coupons)
 
         c_online = next(c for c in coupons if c["id"] == "c_v2_online")
         assert c_online["is_online_shop"] is True
