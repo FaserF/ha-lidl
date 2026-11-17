@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.lidl.api import Store
+from custom_components.lidl.config_flow import LidlConfigFlow
 from custom_components.lidl.const import (
     CONF_COUNTRY,
     CONF_STORE_KEY,
@@ -227,3 +228,23 @@ async def test_flow_user_remembers_selected_country_on_no_stores_found(
             if marker == CONF_COUNTRY or getattr(marker, "schema", None) == CONF_COUNTRY
         ][0]
         assert country_field.default() == "ES"
+
+
+async def test_manual_token_step_validation(hass: HomeAssistant) -> None:
+    """Test manual token step validation when callback URL or token is invalid."""
+    flow = LidlConfigFlow()
+    flow.hass = hass
+
+    # Missing code in callback URL
+    res = await flow.async_step_manual_token(
+        {"refresh_token": "com.lidlplus.app://callback?error=access_denied"}
+    )
+    assert res["type"] == "form"
+    assert res["step_id"] == "manual_token"
+    assert res["errors"] == {"base": "invalid_token"}
+
+    # Short string
+    res = await flow.async_step_manual_token({"refresh_token": "short"})
+    assert res["type"] == "form"
+    assert res["step_id"] == "manual_token"
+    assert res["errors"] == {"base": "invalid_token"}

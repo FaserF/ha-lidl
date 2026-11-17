@@ -25,9 +25,9 @@
         }
       },
       "manual_token": {
-        "description": "Automatic login was blocked (Captcha protection).\n\n**Option A — Automatic Web Login:**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Log in with your credentials — the browser will automatically send the code back to Home Assistant.\n3. You will see \"Login successful\" in the browser and can close the tab.\n\n**Option B — CLI:**\nRun `npx lidl-plus-auth` in your terminal and paste the token below.",
+        "description": "Automatic login was blocked by bot protection (Captcha / Akamai).\n\n**Browser Login Instructions (Chrome/Firefox/Edge):**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Open Developer Tools (**F12 → Network tab**, and enable 'Preserve log').\n3. Log in with your email and password (and complete MFA if prompted).\n4. After login, your browser may show an error (\"Can't reach this page\" or \"Oops!\") — this is normal because desktop browsers cannot handle the `com.lidlplus.app://` mobile protocol.\n5. In the Network tab, look for the entry starting with `com.lidlplus.app` or `callback?code=`. Copy the full URL (e.g. `com.lidlplus.app://callback?code=...&state=...`).\n6. Paste this full callback URL (or directly paste your 20+ character refresh token) below.",
         "data": {
-          "refresh_token": "Refresh Token or Callback URL"
+          "refresh_token": "Callback URL (`com.lidlplus.app://callback?code=...`) or Refresh Token"
         }
       },
       "web_auth": {
@@ -87,13 +87,10 @@
         }
       },
       "manual_token": {
-        "description": "Open the [Lidl Login Link]({login_url}) in your browser, log in. The browser will redirect automatically and Home Assistant will capture the token.",
+        "description": "Automatic login was blocked by bot protection (Captcha / Akamai).\n\n**Browser Login Instructions (Chrome/Firefox/Edge):**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Open Developer Tools (**F12 → Network tab**, and enable 'Preserve log').\n3. Log in with your email and password (and complete MFA if prompted).\n4. In the Network tab, look for the entry starting with `com.lidlplus.app` or `callback?code=`. Copy the full URL (e.g. `com.lidlplus.app://callback?code=...&state=...`).\n5. Paste this full callback URL (or directly paste your 20+ character refresh token) below.",
         "data": {
-          "refresh_token": "Refresh Token (Fallback / CLI)"
+          "refresh_token": "Callback URL (`com.lidlplus.app://callback?code=...`) or Refresh Token"
         }
-      },
-      "web_auth": {
-        "description": "**Step 1:** [Click here to open the Lidl Plus login page]({login_url})\n\n**Step 2:** Log in and complete MFA if prompted.\n\n**Step 3:** After login you will see \"Login successful\" in the browser — Home Assistant captures the token automatically.\n\n⏳ Timeout: 5 minutes."
       }
     },
     "error": {

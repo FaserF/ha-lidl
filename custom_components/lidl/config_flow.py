@@ -201,15 +201,23 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
             except Exception as exc:
                 _LOGGER.error("Lidl Plus headless login failed: %s", exc)
                 exc_str = str(exc).lower()
-                if "invalid" in exc_str or "credential" in exc_str or "pass" in exc_str:
+                if (
+                    "invalid" in exc_str
+                    or "credential" in exc_str
+                    or "password" in exc_str
+                ):
                     errors["base"] = "invalid_auth"
                 elif (
                     "captcha" in exc_str
+                    or "recaptcha" in exc_str
                     or "turnstile" in exc_str
                     or "callback" in exc_str
-                    or "200" in exc_str
+                    or "status: 200" in exc_str
+                    or "status 200" in exc_str
                 ):
-                    return await self.async_step_web_auth()
+                    return await self.async_step_manual_token(
+                        errors={"base": "captcha_required"}
+                    )
                 else:
                     errors["base"] = "auth_failed"
 
@@ -285,6 +293,7 @@ class LidlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[
                         )
                         self._refresh_token = result["refresh_token"]
                         return await self.async_step_select_store()
+                    errors["base"] = "invalid_token"
                 except Exception as exc:
                     _LOGGER.error("Manual token URL exchange failed: %s", exc)
                     errors["base"] = "invalid_token"
@@ -770,13 +779,19 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
             except Exception as exc:
                 _LOGGER.error("Lidl Plus options login failed: %s", exc)
                 exc_str = str(exc).lower()
-                if "invalid" in exc_str or "credential" in exc_str or "pass" in exc_str:
+                if (
+                    "invalid" in exc_str
+                    or "credential" in exc_str
+                    or "password" in exc_str
+                ):
                     errors["base"] = "invalid_auth"
                 elif (
                     "captcha" in exc_str
+                    or "recaptcha" in exc_str
                     or "turnstile" in exc_str
                     or "callback" in exc_str
-                    or "200" in exc_str
+                    or "status: 200" in exc_str
+                    or "status 200" in exc_str
                 ):
                     return await self.async_step_manual_token(
                         errors={"base": "captcha_required"}
@@ -841,6 +856,7 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                             self._exchange_code_for_tokens, code
                         )
                         return self._save_token(result["refresh_token"])
+                    errors["base"] = "invalid_token"
                 except Exception as exc:
                     _LOGGER.error("Options manual token URL exchange failed: %s", exc)
                     errors["base"] = "invalid_token"

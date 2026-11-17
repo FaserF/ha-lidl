@@ -11,22 +11,23 @@
         }
       },
       "login": {
-        "description": "Enter your Lidl Plus email/phone and password. The integration will log in automatically.\n\nIf your account uses **two-factor authentication (MFA)**, you will be asked for the verification code in the next step.\n\nIf automatic login fails, use **Enter refresh token manually** instead — see the README for how to obtain a refresh token using the `lidl-plus` CLI.",
+        "description": "Enter your Lidl Plus email/phone number and password. The integration will attempt automatic login.\n\nIf automatic login fails (e.g. due to Captcha protection), you will be directed to Web Login / Token entry.",
         "data": {
           "email": "Lidl Plus Email / Phone",
-          "password": "Lidl Plus Password"
+          "password": "Lidl Plus Password",
+          "use_manual_token": "Use Refresh Token / Web Login"
         }
       },
       "mfa": {
-        "description": "A verification code was sent to your registered phone or email. Please enter it below.",
+        "description": "A verification code has been sent to your registered phone or email. Please enter it below.",
         "data": {
           "mfa_code": "Verification Code"
         }
       },
       "manual_token": {
-        "description": "Enter the refresh token you obtained via the `lidl-plus` CLI tool. See the README for step-by-step instructions.",
+        "description": "Automatic login was blocked by bot protection (Captcha / Akamai).\n\n**Browser Login Instructions (Chrome/Firefox/Edge):**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Open Developer Tools (**F12 → Network tab**, and enable 'Preserve log').\n3. Log in with your email and password (and complete MFA if prompted).\n4. After login, your browser may show an error (\"Can't reach this page\" or \"Oops!\") — this is normal because desktop browsers cannot handle the `com.lidlplus.app://` mobile protocol.\n5. In the Network tab, look for the entry starting with `com.lidlplus.app` or `callback?code=`. Copy the full URL (e.g. `com.lidlplus.app://callback?code=...&state=...`).\n6. Paste this full callback URL (or directly paste your 20+ character refresh token) below.",
         "data": {
-          "refresh_token": "Refresh Token"
+          "refresh_token": "Callback URL (`com.lidlplus.app://callback?code=...`) or Refresh Token"
         }
       },
       "select_store": {
@@ -47,9 +48,11 @@
     "error": {
       "search_failed": "Failed to query the Lidl store API.",
       "no_stores_found": "No Lidl stores found matching your query. Please try another search.",
-      "auth_failed": "Authentication with Lidl Plus failed. Please check your credentials or try entering the refresh token manually.",
+      "auth_failed": "Lidl Plus login failed. Please check your credentials.",
+      "invalid_auth": "Invalid email/phone number or password.",
+      "captcha_required": "Automatic login blocked by Captcha. Please use the Web Login link or paste your callback URL / refresh token.",
       "mfa_failed": "MFA verification failed. Please check the code and try again.",
-      "invalid_token": "The refresh token appears to be invalid (too short). Please try again.",
+      "invalid_token": "The refresh token or callback URL is invalid. Please try again.",
       "unknown": "Unknown error occurred."
     }
   },
@@ -60,33 +63,39 @@
         "data": {
           "update_interval": "Update Interval (hours, min 1, max 168)",
           "product_filters": "Product filters (keywords to monitor for offers)",
+          "card_number": "Lidl Plus Card Barcode Number (e.g. 77490003422453494)",
+          "auto_activate_coupons": "Automatically activate coupons in background",
+          "skip_special_coupons": "Skip special product selection coupons (Default: Yes)",
           "action": "Action"
         }
       },
       "login": {
-        "description": "Enter your Lidl Plus email/phone and password. The integration will log in automatically.\n\nIf your account uses MFA, you will be asked for the verification code next.\n\nIf automatic login fails, use **Enter refresh token manually** — see the README.",
+        "description": "Enter your Lidl Plus credentials or check 'Use Refresh Token / Web Login'.",
         "data": {
           "email": "Lidl Plus Email / Phone",
-          "password": "Lidl Plus Password"
+          "password": "Lidl Plus Password",
+          "use_manual_token": "Use Refresh Token / Web Login"
         }
       },
       "mfa": {
-        "description": "A verification code was sent to your registered phone or email. Please enter it below.",
+        "description": "A verification code has been sent to your registered phone or email. Please enter it below.",
         "data": {
           "mfa_code": "Verification Code"
         }
       },
       "manual_token": {
-        "description": "Enter the refresh token you obtained via the `lidl-plus` CLI tool. See the README for step-by-step instructions.",
+        "description": "Automatic login was blocked by bot protection (Captcha / Akamai).\n\n**Browser Login Instructions (Chrome/Firefox/Edge):**\n1. [Click here to open the Lidl Plus login page]({login_url})\n2. Open Developer Tools (**F12 → Network tab**, and enable 'Preserve log').\n3. Log in with your email and password (and complete MFA if prompted).\n4. In the Network tab, look for the entry starting with `com.lidlplus.app` or `callback?code=`. Copy the full URL (e.g. `com.lidlplus.app://callback?code=...&state=...`).\n5. Paste this full callback URL (or directly paste your 20+ character refresh token) below.",
         "data": {
-          "refresh_token": "Refresh Token"
+          "refresh_token": "Callback URL (`com.lidlplus.app://callback?code=...`) or Refresh Token"
         }
       }
     },
     "error": {
-      "auth_failed": "Authentication failed. Please check your credentials.",
+      "auth_failed": "Login failed. Please check your credentials.",
+      "invalid_auth": "Invalid email/phone number or password.",
+      "captcha_required": "Automatic login blocked by Captcha. Please use the Web Login link or paste your callback URL / refresh token.",
       "mfa_failed": "MFA verification failed. Please check the code and try again.",
-      "invalid_token": "The refresh token appears to be invalid (too short). Please try again."
+      "invalid_token": "The refresh token or callback URL is invalid. Please try again."
     }
   },
   "issues": {

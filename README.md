@@ -172,7 +172,7 @@ Lidl uses **OAuth 2.0 with PKCE** (Proof Key for Code Exchange), designed exclus
 | Constraint | Effect |
 | :--- | :--- |
 | `redirect_uri` is **only** `com.lidlplus.app://callback` | No other redirect URI (including `http://localhost`) is accepted — the auth server returns *"There's been an error, Sorry, something went wrong"* for any other value |
-| Login page uses **Cloudflare Turnstile** (anti-bot CAPTCHA) | Headless/automated login is frequently blocked on new accounts or after repeated attempts |
+| Login page uses **Google reCAPTCHA Enterprise & Akamai Bot Protection** | Headless/automated login is frequently blocked on new accounts or after repeated attempts |
 | MFA (2FA) is enforced on many accounts | A verification code sent via SMS/email is required even in headless mode |
 | The app deeplink `com.lidlplus.app://` cannot be opened in a desktop browser | After successful login, the browser shows a connection error — the authorization code is embedded in the failed redirect URL |
 
@@ -287,7 +287,7 @@ Copy the `refresh_token` value and paste it in Home Assistant.
 | Error | Cause | Solution |
 | :--- | :--- | :--- |
 | *"There's been an error, Sorry, something went wrong"* shown **before login** | The OAuth authorization URL uses a `redirect_uri` that is not `com.lidlplus.app://callback` — Lidl only accepts this exact URI | Make sure you use the link provided by Home Assistant (not a manually constructed URL with a localhost redirect) |
-| *"Login flow did not reach callback. Last status: 200"* | Cloudflare/Turnstile CAPTCHA blocked the headless login | Use Option 2 (browser-based login) — HA will show you the link automatically |
+| *"Login flow did not reach callback. Last status: 200"* | Google reCAPTCHA Enterprise / Akamai bot protection blocked headless login | Use Option 2 (browser-based login) — HA will show you the link automatically |
 | *"invalid_auth"* in HA | Wrong email/password | Double-check credentials on the [Lidl Plus app](https://www.lidl.de/lidl-plus) |
 | *"mfa_failed"* | Wrong or expired MFA code | Request a new code and enter it immediately |
 | Browser shows error after login but address bar is empty / URL not visible | Browser navigated away from the deeplink URL | Use F12 → Network tab to find the `com.lidlplus.app://` request (see Option 2 tip) |
