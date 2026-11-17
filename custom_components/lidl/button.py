@@ -95,7 +95,9 @@ class LidlActivateCouponsButton(ButtonEntity):
         count = await self.coordinator.hass.async_add_executor_job(
             self.coordinator.activate_all_coupons
         )
-        _LOGGER.info("Activated %d Lidl Plus coupons", count)
+        result = self.coordinator.last_activation_result
+        failed = result.get("failed", 0)
+        _LOGGER.info("Activated %d Lidl Plus coupons (failed: %d)", count, failed)
         # Refresh to update coupon sensor state
         self.coordinator.force_update()
         await self.coordinator.async_request_refresh()

@@ -550,6 +550,89 @@ async def test_activate_all_coupons_with_home_logged(
 
         activated_count = coordinator.activate_all_coupons()
         assert activated_count == 1
+        assert coordinator.last_activation_result["activated"] == 1
+        assert coordinator.last_activation_result["failed"] == 0
+
+
+async def test_activate_all_coupons_with_rejected_coupon(
+    hass: HomeAssistant,
+) -> None:
+    """Test handling and logging of rejected coupon activations."""
+    from custom_components.lidl.const import (
+        CONF_AUTO_ACTIVATE_COUPONS,
+        CONF_REFRESH_TOKEN,
+        CONF_SKIP_SPECIAL_COUPONS,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "DE",
+            CONF_STORE_KEY: "123",
+            CONF_REFRESH_TOKEN: "mock_refresh_token",
+        },
+        options={
+            CONF_AUTO_ACTIVATE_COUPONS: True,
+            CONF_SKIP_SPECIAL_COUPONS: False,
+        },
+        entry_id="test_entry_id",
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+    coordinator._get_access_and_id_token = (  # type: ignore[method-assign]
+        lambda: ("fake_access_token", "fake_id_token")
+    )
+
+    mock_home_response = {
+        "promotions": {
+            "sections": [
+                {
+                    "name": "Promotions",
+                    "promotions": [
+                        {
+                            "id": "promo_rejected",
+                            "title": "Bakery 20% off",
+                            "isActivated": False,
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self._json_data = json_data
+            self.status_code = status_code
+            self.text = ""
+
+        def json(self):
+            return self._json_data
+
+    with (
+        patch("curl_cffi.requests.get") as mock_get,
+        patch("curl_cffi.requests.post") as mock_post,
+    ):
+        mock_get.return_value = MockResponse([], status_code=200)
+
+        def _mock_post(url, **kwargs):
+            if "home/logged" in url:
+                return MockResponse(mock_home_response)
+            if "promo_rejected/activation" in url:
+                resp = MockResponse({"error": "Coupon limit reached"}, status_code=400)
+                resp.text = '{"error": "Coupon limit reached"}'
+                return resp
+            return MockResponse({}, status_code=200)
+
+        mock_post.side_effect = _mock_post
+
+        activated_count = coordinator.activate_all_coupons()
+        assert activated_count == 0
+        assert coordinator.last_activation_result["activated"] == 0
+        assert coordinator.last_activation_result["failed"] == 1
+        assert coordinator.last_activation_result["errors"][0]["id"] == "promo_rejected"
+        assert coordinator.last_activation_result["errors"][0]["status"] == 400
 
 
 async def test_fetch_all_receipts_pagination(hass: HomeAssistant) -> None:

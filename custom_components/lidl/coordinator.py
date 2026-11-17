@@ -63,6 +63,11 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_success: datetime | None = None
         self._issue_created = False
         self._force_update = False
+        self.last_activation_result: dict[str, Any] = {
+            "activated": 0,
+            "failed": 0,
+            "errors": [],
+        }
 
         self.store: storage.Store = storage.Store(hass, 1, f"{DOMAIN}_{self.store_key}")
 
@@ -659,6 +664,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                     "Auto-activated Lidl Plus coupon %s",
                                                     cid,
                                                 )
+                                            else:
+                                                _LOGGER.warning(
+                                                    "Lidl rejected auto-activation of coupon %s (%s): HTTP %s %s",
+                                                    cid,
+                                                    c.get("title"),
+                                                    r_act.status_code,
+                                                    r_act.text[:300].strip(),
+                                                )
                                         except Exception as exc:  # noqa: BLE001
                                             _LOGGER.warning(
                                                 "Failed to auto-activate coupon %s: %s",
@@ -813,6 +826,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                     "Auto-activated Lidl Plus coupon %s",
                                                     cid,
                                                 )
+                                            else:
+                                                _LOGGER.warning(
+                                                    "Lidl rejected auto-activation of coupon %s (%s): HTTP %s %s",
+                                                    cid,
+                                                    c.get("title"),
+                                                    r_act.status_code,
+                                                    r_act.text[:300].strip(),
+                                                )
                                         except Exception as exc:  # noqa: BLE001
                                             _LOGGER.warning(
                                                 "Failed to auto-activate coupon %s: %s",
@@ -961,6 +982,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                                     "Auto-activated Lidl Plus coupon %s",
                                                     cid,
                                                 )
+                                            else:
+                                                _LOGGER.warning(
+                                                    "Lidl rejected auto-activation of coupon %s (%s): HTTP %s %s",
+                                                    cid,
+                                                    c.get("title"),
+                                                    r_act.status_code,
+                                                    r_act.text[:300].strip(),
+                                                )
                                         except Exception as exc:  # noqa: BLE001
                                             _LOGGER.warning(
                                                 "Failed to auto-activate coupon %s: %s",
@@ -1101,6 +1130,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         from curl_cffi import requests
 
         activated = 0
+        failed = 0
+        errors: list[dict[str, Any]] = []
         if not self.refresh_token:
             return activated
 
@@ -1257,7 +1288,33 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         _LOGGER.info(
                                             "Activated Lidl Plus coupon %s", cid
                                         )
+                                    else:
+                                        failed += 1
+                                        err_text = r_act.text[:300].strip()
+                                        errors.append(
+                                            {
+                                                "id": cid,
+                                                "title": c.get("title"),
+                                                "status": r_act.status_code,
+                                                "error": err_text,
+                                            }
+                                        )
+                                        _LOGGER.warning(
+                                            "Lidl rejected activation of coupon %s (%s): HTTP %s %s",
+                                            cid,
+                                            c.get("title"),
+                                            r_act.status_code,
+                                            err_text,
+                                        )
                                 except Exception as exc:  # noqa: BLE001
+                                    failed += 1
+                                    errors.append(
+                                        {
+                                            "id": cid,
+                                            "title": c.get("title"),
+                                            "error": str(exc),
+                                        }
+                                    )
                                     _LOGGER.warning(
                                         "Failed to activate coupon %s: %s",
                                         cid,
@@ -1371,7 +1428,33 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         _LOGGER.info(
                                             "Activated Lidl Plus coupon %s", cid
                                         )
+                                    else:
+                                        failed += 1
+                                        err_text = r_act.text[:300].strip()
+                                        errors.append(
+                                            {
+                                                "id": cid,
+                                                "title": c.get("title"),
+                                                "status": r_act.status_code,
+                                                "error": err_text,
+                                            }
+                                        )
+                                        _LOGGER.warning(
+                                            "Lidl rejected activation of coupon %s (%s): HTTP %s %s",
+                                            cid,
+                                            c.get("title"),
+                                            r_act.status_code,
+                                            err_text,
+                                        )
                                 except Exception as exc:  # noqa: BLE001
+                                    failed += 1
+                                    errors.append(
+                                        {
+                                            "id": cid,
+                                            "title": c.get("title"),
+                                            "error": str(exc),
+                                        }
+                                    )
                                     _LOGGER.warning(
                                         "Failed to activate coupon %s: %s",
                                         cid,
@@ -1480,7 +1563,33 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         _LOGGER.info(
                                             "Activated Lidl Plus coupon %s", cid
                                         )
+                                    else:
+                                        failed += 1
+                                        err_text = r_act.text[:300].strip()
+                                        errors.append(
+                                            {
+                                                "id": cid,
+                                                "title": c.get("title"),
+                                                "status": r_act.status_code,
+                                                "error": err_text,
+                                            }
+                                        )
+                                        _LOGGER.warning(
+                                            "Lidl rejected activation of coupon %s (%s): HTTP %s %s",
+                                            cid,
+                                            c.get("title"),
+                                            r_act.status_code,
+                                            err_text,
+                                        )
                                 except Exception as exc:  # noqa: BLE001
+                                    failed += 1
+                                    errors.append(
+                                        {
+                                            "id": cid,
+                                            "title": c.get("title"),
+                                            "error": str(exc),
+                                        }
+                                    )
                                     _LOGGER.warning(
                                         "Failed to activate coupon %s: %s",
                                         cid,
@@ -1493,6 +1602,17 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         except Exception as exc:  # noqa: BLE001
             _LOGGER.error("Failed to activate Lidl Plus coupons: %s", exc)
+
+        self.last_activation_result = {
+            "activated": activated,
+            "failed": failed,
+            "errors": errors,
+        }
+        _LOGGER.info(
+            "Lidl Plus coupon activation finished: %d activated, %d failed",
+            activated,
+            failed,
+        )
 
         return activated
 

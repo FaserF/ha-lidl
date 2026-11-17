@@ -361,10 +361,13 @@ class LidlActivatedCouponsSensor(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details of activated coupons."""
-        return {
+        attrs: dict[str, Any] = {
             "coupons": self._activated_coupons,
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
+        if hasattr(self.coordinator, "last_activation_result"):
+            attrs["last_activation_result"] = self.coordinator.last_activation_result
+        return attrs
 
     @property
     def available(self) -> bool:
