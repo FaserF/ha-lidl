@@ -27,11 +27,37 @@ ATTR_DISCOUNTS = "discounts"
 ATTR_VALID_DATE = "valid_until"
 ATTR_VALID_FROM = "valid_from"
 
-# Countries whose language tag differs from their country code.
+# Standard BCP 47 language tags for Lidl Plus supported countries.
 # Format: country_code (upper) -> Accept-Language value
-_COUNTRY_LANGUAGE_OVERRIDES: dict[str, str] = {
-    "US": "en-US",
+_COUNTRY_LANGUAGE_MAP: dict[str, str] = {
+    "AT": "de-AT",
+    "BE": "nl-BE",
+    "BG": "bg-BG",
+    "CH": "de-CH",
+    "CZ": "cs-CZ",
+    "DE": "de-DE",
+    "DK": "da-DK",
+    "EE": "et-EE",
+    "ES": "es-ES",
+    "FI": "fi-FI",
+    "FR": "fr-FR",
     "GB": "en-GB",
+    "GR": "el-GR",
+    "HR": "hr-HR",
+    "HU": "hu-HU",
+    "IE": "en-IE",
+    "IT": "it-IT",
+    "LT": "lt-LT",
+    "LU": "fr-LU",
+    "LV": "lv-LV",
+    "NL": "nl-NL",
+    "PL": "pl-PL",
+    "PT": "pt-PT",
+    "RO": "ro-RO",
+    "SE": "sv-SE",
+    "SI": "sl-SI",
+    "SK": "sk-SK",
+    "US": "en-US",
 }
 
 # Countries that use "com" as their TLD (lidl.com) instead of lidl.<cc>
@@ -44,8 +70,8 @@ _COUNTRY_TLD_OVERRIDES: dict[str, str] = {
 def language_for_country(country: str) -> str:
     """Return the Accept-Language / language tag for a Lidl Plus country code."""
     country_upper = country.upper()
-    if country_upper in _COUNTRY_LANGUAGE_OVERRIDES:
-        return _COUNTRY_LANGUAGE_OVERRIDES[country_upper]
+    if country_upper in _COUNTRY_LANGUAGE_MAP:
+        return _COUNTRY_LANGUAGE_MAP[country_upper]
     cc = country_upper.lower()
     return f"{cc}-{country_upper}"
 

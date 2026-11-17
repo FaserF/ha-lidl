@@ -82,16 +82,23 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if city and address:
             import re
+            import unicodedata
 
             def slugify(text: str) -> str:
-                # Replace German umlauts
+                # Transliterate language-specific special characters
                 text = text.lower()
                 text = (
                     text.replace("ä", "ae")
                     .replace("ö", "oe")
                     .replace("ü", "ue")
                     .replace("ß", "ss")
+                    .replace("ł", "l")
+                    .replace("ø", "oe")
+                    .replace("æ", "ae")
+                    .replace("å", "aa")
                 )
+                text = unicodedata.normalize("NFKD", text)
+                text = "".join(c for c in text if not unicodedata.combining(c))
                 # Remove special chars and replace spaces/slashes with dashes
                 text = re.sub(r"[^a-z0-9\s-]", "", text)
                 text = re.sub(r"[\s/]+", "-", text)
@@ -161,10 +168,28 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "it": "ItalyEcommerceClient",
             "gb": "UkEcommerceClient",
             "us": "USAEcommerceClient",
+            "pl": "PolandEcommerceClient",
+            "cz": "CzechEcommerceClient",
+            "sk": "SlovakiaEcommerceClient",
+            "hu": "HungaryEcommerceClient",
+            "ro": "RomaniaEcommerceClient",
+            "bg": "BulgariaEcommerceClient",
+            "hr": "CroatiaEcommerceClient",
+            "si": "SloveniaEcommerceClient",
+            "pt": "PortugalEcommerceClient",
+            "gr": "GreeceEcommerceClient",
+            "dk": "DenmarkEcommerceClient",
+            "se": "SwedenEcommerceClient",
+            "fi": "FinlandEcommerceClient",
+            "ie": "IrelandEcommerceClient",
+            "lt": "LithuaniaEcommerceClient",
+            "lv": "LatviaEcommerceClient",
+            "ee": "EstoniaEcommerceClient",
+            "lu": "LuxembourgEcommerceClient",
         }
-        client_id = client_name_map.get(
-            country_lower, f"{self.country.title()}EcommerceClient"
-        )
+        client_id = client_name_map.get(country_lower)
+        if not client_id:
+            return f"https://www.lidl.{tld}/"
         return f"https://www.lidl.{tld}/mla/?country_code={country_lower}&language={language_for_country(self.country)}&client_id={client_id}"
 
     @property
@@ -1096,8 +1121,13 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             else curr_code
                         )
                         total_val = latest.get("totalAmount")
+                        decimal_sep = (
+                            "."
+                            if self.country.upper() in ("US", "GB", "IE", "MT")
+                            else ","
+                        )
                         formatted_total = (
-                            f"{total_val:.2f} {curr_symbol}".replace(".", ",")
+                            f"{total_val:.2f} {curr_symbol}".replace(".", decimal_sep)
                             if isinstance(total_val, (int, float))
                             else f"{total_val} {curr_symbol}".strip()
                         )

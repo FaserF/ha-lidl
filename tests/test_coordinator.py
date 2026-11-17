@@ -888,3 +888,25 @@ async def test_fetch_receipt_details_validation(
         match="Unknown receipt ID: r2",
     ):
         coordinator.fetch_receipt_details("r2")
+
+
+async def test_coordinator_configuration_url_international(
+    hass: HomeAssistant,
+) -> None:
+    """Test configuration URLs and slugify for international addresses (e.g. Poland)."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: "PL",
+            CONF_STORE_KEY: "PL1234",
+            "city": "Łódź",
+            "address": "al. Kraśnicka 12",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = LidlDataUpdateCoordinator(hass, entry)
+    assert "lodz" in coordinator.configuration_url
+    assert "krasnicka" in coordinator.configuration_url
+    assert "PolandEcommerceClient" in coordinator.account_configuration_url

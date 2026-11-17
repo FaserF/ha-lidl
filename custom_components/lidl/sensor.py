@@ -148,10 +148,15 @@ class LidlProductFilterSensor(
 
     @property
     def native_value(self) -> str:
-        """Return best price found or 'Nicht im Angebot'."""
+        """Return best price found or fallback string."""
+        fallback = (
+            "Nicht im Angebot"
+            if self.coordinator.country.upper() in ("DE", "AT", "CH")
+            else "Not on offer"
+        )
         matches = self._get_matches()
         if not matches:
-            return "Nicht im Angebot"
+            return fallback
 
         # Find best price among matching offers
         best_price = None
@@ -167,7 +172,7 @@ class LidlProductFilterSensor(
                 elif best_price is None:
                     best_price = str(price_val)
 
-        return best_price if best_price is not None else "Nicht im Angebot"
+        return best_price if best_price is not None else fallback
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

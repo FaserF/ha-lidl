@@ -115,9 +115,15 @@ async def _async_discover_stores(hass: core.HomeAssistant) -> None:
         )
         return
 
-    # Derive country from HA system setting; fall back to "DE" if unsupported
-    ha_country: str = (getattr(hass.config, "country", None) or "DE").upper()
-    country = ha_country if ha_country in _SUPPORTED_COUNTRIES else "DE"
+    # Derive country from HA system setting; skip discovery if unsupported
+    ha_country_raw: str | None = getattr(hass.config, "country", None)
+    if not ha_country_raw or ha_country_raw.upper() not in _SUPPORTED_COUNTRIES:
+        _LOGGER.debug(
+            "Lidl discovery: HA country %s is not supported, skipping discovery",
+            ha_country_raw,
+        )
+        return
+    country = ha_country_raw.upper()
 
     _LOGGER.debug("Lidl discovery: searching stores (country: %s)", country)
 

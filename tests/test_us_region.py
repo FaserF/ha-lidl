@@ -23,9 +23,15 @@ from custom_components.lidl.coordinator import LidlDataUpdateCoordinator
     ("country", "expected"),
     [
         ("DE", "de-DE"),
-        ("AT", "at-AT"),
+        ("AT", "de-AT"),
+        ("BE", "nl-BE"),
+        ("CZ", "cs-CZ"),
+        ("DK", "da-DK"),
         ("FR", "fr-FR"),
         ("GB", "en-GB"),  # special case
+        ("GR", "el-GR"),
+        ("PL", "pl-PL"),
+        ("SE", "sv-SE"),
         ("US", "en-US"),  # special case — must NOT be "us-US"
         ("de", "de-DE"),  # lowercase input
         ("us", "en-US"),  # lowercase input
