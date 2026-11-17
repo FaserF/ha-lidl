@@ -311,7 +311,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Skip if last fetch was very recent
         if not self._force_update and self._last_success is not None:
             has_personal = self.refresh_token is None or (
-                self.data and "coupons" in self.data
+                self.data and "coupons" in self.data and "receipts" in self.data
             )
             if has_personal:
                 time_since = dt_util.now() - self._last_success
@@ -400,7 +400,13 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
                 data.update(personal)
             elif self.data:
-                for key in ("coupons", "last_receipt", "user_profile"):
+                for key in (
+                    "coupons",
+                    "last_receipt",
+                    "user_profile",
+                    "receipts",
+                    "receipt_ids",
+                ):
                     if key in self.data:
                         data[key] = self.data[key]
                 data["loyalty_id"] = self.card_number or self.data.get("loyalty_id")
