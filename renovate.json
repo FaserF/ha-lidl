@@ -9,6 +9,12 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
+      "matchFiles": [
+        "custom_components/**/manifest.json"
+      ],
+      "rangeStrategy": "replace"
+    },
+    {
       "matchCategories": [
         "python"
       ],

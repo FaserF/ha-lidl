@@ -1166,6 +1166,18 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.warning("Failed to fetch Lidl Plus last receipt: %s", exc)
                 result["last_receipt"] = None
 
+            # --- All Receipts ---
+            try:
+                all_receipts = self._fetch_all_receipts(headers)
+                result["receipts"] = all_receipts
+                result["receipt_ids"] = [
+                    str(r.get("id")).strip() for r in all_receipts if r.get("id")
+                ]
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.warning("Failed to fetch Lidl Plus receipts: %s", exc)
+                result["receipts"] = []
+                result["receipt_ids"] = []
+
         except Exception as exc:  # noqa: BLE001
             _LOGGER.error("Failed to fetch Lidl Plus personal data: %s", exc)
 
@@ -1649,9 +1661,6 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 impersonate="chrome110",
                 timeout=15,
             )
-
-            # _LOGGER.warning("Lidl Plus receipt retrieval DEBUG test")
-            # _LOGGER.warning(headers)
             response.raise_for_status()
 
             data = response.json()
@@ -1725,7 +1734,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         items = []
         if r_detail.status_code == 200:
             detail_data = r_detail.json()
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "LIDL RECEIPTS: JSON %s",
                 detail_data,
             )
