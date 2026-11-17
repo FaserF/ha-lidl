@@ -551,6 +551,7 @@ async def test_activate_all_coupons_with_home_logged(
         activated_count = coordinator.activate_all_coupons()
         assert activated_count == 1
 
+
 async def test_fetch_all_receipts_pagination(hass: HomeAssistant) -> None:
     """Test fetching all receipts across multiple pages with deduplication."""
     entry = MockConfigEntry(
@@ -620,6 +621,7 @@ async def test_fetch_all_receipts_pagination(hass: HomeAssistant) -> None:
         # Check headers are passed correctly
         assert mock_get.call_args_list[0].kwargs["headers"] == headers
 
+
 async def test_fetch_all_receipts_stopping_conditions(
     hass: HomeAssistant,
 ) -> None:
@@ -650,20 +652,24 @@ async def test_fetch_all_receipts_stopping_conditions(
 
     with patch("curl_cffi.requests.get") as mock_get:
         mock_get.side_effect = [
-            MockResponse({
-                "tickets": [
-                    {"id": "r1"},
-                    {"id": ""},
-                    {"id": "   "},
-                ],
-                "totalCount": 10,
-            }),
-            MockResponse({
-                "tickets": [
-                    {"id": "r1"},  # Duplicate-only page
-                ],
-                "totalCount": 10,
-            }),
+            MockResponse(
+                {
+                    "tickets": [
+                        {"id": "r1"},
+                        {"id": ""},
+                        {"id": "   "},
+                    ],
+                    "totalCount": 10,
+                }
+            ),
+            MockResponse(
+                {
+                    "tickets": [
+                        {"id": "r1"},  # Duplicate-only page
+                    ],
+                    "totalCount": 10,
+                }
+            ),
         ]
 
         receipts = coordinator._fetch_all_receipts(headers)
@@ -671,6 +677,7 @@ async def test_fetch_all_receipts_stopping_conditions(
         assert len(receipts) == 1
         assert receipts[0]["id"] == "r1"
         assert mock_get.call_count == 2
+
 
 async def test_fetch_receipt_details_html_receipt(
     hass: HomeAssistant,
@@ -760,6 +767,7 @@ async def test_fetch_receipt_details_html_receipt(
             "quantity": "1",
             "unit_price": "1.49 €",
         }
+
 
 async def test_fetch_receipt_details_validation(
     hass: HomeAssistant,

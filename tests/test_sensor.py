@@ -307,6 +307,7 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
         assert pizza_state.attributes["product_title"] is None
         assert len(pizza_state.attributes["matches"]) == 0
 
+
 async def test_receipts_sensor(hass: HomeAssistant) -> None:
     """Test Lidl Plus receipts sensor attributes."""
     entry = MockConfigEntry(

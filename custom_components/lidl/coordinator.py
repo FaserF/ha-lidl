@@ -1495,7 +1495,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.error("Failed to activate Lidl Plus coupons: %s", exc)
 
         return activated
-    
+
     def _fetch_all_receipts(self, headers: dict[str, str]) -> list[dict[str, Any]]:
         """Fetch all Lidl Plus receipt summaries."""
         from curl_cffi import requests
@@ -1516,7 +1516,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 impersonate="chrome110",
                 timeout=15,
             )
-            
+
             # _LOGGER.warning("Lidl Plus receipt retrieval DEBUG test")
             # _LOGGER.warning(headers)
             response.raise_for_status()
@@ -1556,10 +1556,9 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         return receipts
-   
+
     def fetch_receipt_details(self, receipt_id: str) -> dict[str, Any]:
         """Fetch full Lidl receipt details and structured line items."""
-        from decimal import Decimal, InvalidOperation
 
         from curl_cffi import requests
 
@@ -1567,8 +1566,7 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise ValueError("Lidl Plus authentication is required")
 
         known_ids = {
-            str(receipt.get("id"))
-            for receipt in (self.data or {}).get("receipts", [])
+            str(receipt.get("id")) for receipt in (self.data or {}).get("receipts", [])
         }
 
         if receipt_id not in known_ids:
@@ -1585,7 +1583,6 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "Country": self.country,
         }
 
-
         r_detail = requests.get(
             f"https://tickets.lidlplus.com/api/v3/{self.country}/tickets/{receipt_id}",
             headers=headers,
@@ -1600,8 +1597,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 detail_data,
             )
             if detail_data.get("htmlPrintedReceipt"):
-                from html.parser import HTMLParser
                 from html import unescape
+                from html.parser import HTMLParser
 
                 class ReceiptParser(HTMLParser):
                     def __init__(self):
@@ -1620,12 +1617,14 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         name = attrs.get("data-art-description")
 
                         if name:
-                            self.items.append({
-                                "name": unescape(name),
-                                "code": attrs.get("data-art-id"),
-                                "quantity": attrs.get("data-art-quantity", "1"),
-                                "unit_price": attrs.get("data-unit-price"),
-                            })
+                            self.items.append(
+                                {
+                                    "name": unescape(name),
+                                    "code": attrs.get("data-art-id"),
+                                    "quantity": attrs.get("data-art-quantity", "1"),
+                                    "unit_price": attrs.get("data-unit-price"),
+                                }
+                            )
 
                 parser = ReceiptParser()
                 parser.feed(detail_data["htmlPrintedReceipt"])
@@ -1634,7 +1633,8 @@ class LidlDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return {
                     "id": receipt_id,
                     "date": detail_data.get("date"),
-                    "store": detail_data.get("store", {}).get("name") or detail_data.get("store", {}).get("id"),
+                    "store": detail_data.get("store", {}).get("name")
+                    or detail_data.get("store", {}).get("id"),
                     "store_code": detail_data.get("store", {}).get("id"),
                     # "total": total_val,
                     # "currency": curr_code,

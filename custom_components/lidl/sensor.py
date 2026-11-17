@@ -46,7 +46,6 @@ async def async_setup_entry(
                 LidlAvailableCouponsSensor(coordinator),
                 LidlLastReceiptSensor(coordinator),
                 LidlReceiptsSensor(coordinator),
-
             ]
 
     active_slugs = set()

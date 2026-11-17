@@ -32,9 +32,9 @@ class LidlReceiptView(HomeAssistantView):
     ):
         """Return the details of a receipt."""
 
-        coordinator: LidlDataUpdateCoordinator | None = (
-            self.hass.data.get(DOMAIN, {}).get(entry_id)
-        )
+        coordinator: LidlDataUpdateCoordinator | None = self.hass.data.get(
+            DOMAIN, {}
+        ).get(entry_id)
 
         if coordinator is None:
             return self.json(
@@ -48,10 +48,12 @@ class LidlReceiptView(HomeAssistantView):
                 receipt_id,
             )
 
-            return self.json({
-                "receipt_id": receipt_id,
-                "receipt": receipt,
-            })
+            return self.json(
+                {
+                    "receipt_id": receipt_id,
+                    "receipt": receipt,
+                }
+            )
 
         except ValueError:
             return self.json(

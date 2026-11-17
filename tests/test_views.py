@@ -1,4 +1,3 @@
-
 """Test the Lidl Plus HTTP views."""
 
 from unittest.mock import Mock
@@ -9,7 +8,6 @@ from homeassistant.setup import async_setup_component
 
 from custom_components.lidl.const import DOMAIN
 from custom_components.lidl.views import LidlReceiptView
-
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -51,9 +49,7 @@ async def test_receipt_view_success(
 
     hass.data.setdefault(DOMAIN, {})["test_entry"] = coordinator
 
-    response = await authenticated_client.get(
-        "/api/lidl/test_entry/receipts/r1"
-    )
+    response = await authenticated_client.get("/api/lidl/test_entry/receipts/r1")
 
     assert response.status == 200
     assert await response.json() == {
@@ -68,9 +64,7 @@ async def test_receipt_view_account_not_found(
     authenticated_client,
 ) -> None:
     """Test requesting a receipt for an unknown Lidl account."""
-    response = await authenticated_client.get(
-        "/api/lidl/unknown_entry/receipts/r1"
-    )
+    response = await authenticated_client.get("/api/lidl/unknown_entry/receipts/r1")
 
     assert response.status == 404
     assert await response.json() == {
@@ -90,9 +84,7 @@ async def test_receipt_view_receipt_not_found(
 
     hass.data.setdefault(DOMAIN, {})["test_entry"] = coordinator
 
-    response = await authenticated_client.get(
-        "/api/lidl/test_entry/receipts/r999"
-    )
+    response = await authenticated_client.get("/api/lidl/test_entry/receipts/r999")
 
     assert response.status == 404
     assert await response.json() == {
@@ -108,15 +100,11 @@ async def test_receipt_view_api_failure(
 ) -> None:
     """Test handling an unexpected Lidl API failure."""
     coordinator = Mock()
-    coordinator.fetch_receipt_details.side_effect = RuntimeError(
-        "Lidl API unavailable"
-    )
+    coordinator.fetch_receipt_details.side_effect = RuntimeError("Lidl API unavailable")
 
     hass.data.setdefault(DOMAIN, {})["test_entry"] = coordinator
 
-    response = await authenticated_client.get(
-        "/api/lidl/test_entry/receipts/r1"
-    )
+    response = await authenticated_client.get("/api/lidl/test_entry/receipts/r1")
 
     assert response.status == 502
     assert await response.json() == {
@@ -138,9 +126,7 @@ async def test_receipt_view_unexpected_exception(
 
     hass.data.setdefault(DOMAIN, {})["test_entry"] = coordinator
 
-    response = await authenticated_client.get(
-        "/api/lidl/test_entry/receipts/r1"
-    )
+    response = await authenticated_client.get("/api/lidl/test_entry/receipts/r1")
 
     assert response.status == 502
     assert await response.json() == {
