@@ -81,6 +81,7 @@ body:
       description: |
         Download diagnostics from the integration page and paste here (very helpful!):
         [![Open your Home Assistant instance and show the lidl integration.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=lidl)
+        (Sensitive tokens and card numbers are automatically redacted. Please ensure no personal credentials or tokens are exposed before submitting.)
       render: json
     validations:
       required: false

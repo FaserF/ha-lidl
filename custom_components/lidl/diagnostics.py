@@ -14,8 +14,12 @@ TO_REDACT = {
     "api_key",
     "password",
     "token",
+    "refresh_token",
+    "access_token",
+    "id_token",
     "session",
     "webhook_id",
+    "card_number",
 }
 
 

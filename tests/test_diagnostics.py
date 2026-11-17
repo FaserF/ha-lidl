@@ -21,8 +21,11 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
             CONF_COUNTRY: "DE",
             CONF_STORE_KEY: "123",
             "password": "secret_id",
+            "refresh_token": "secret_refresh_token",
         },
-        options={},
+        options={
+            "card_number": "secret_card_number",
+        },
         entry_id="test_entry_id",
     )
     entry.add_to_hass(hass)
@@ -41,5 +44,7 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
 
         res = await async_get_config_entry_diagnostics(hass, entry)
         assert res["entry"]["title"] == "Lidl Store 123"
-        # Secret password should be redacted
+        # Secret values should be redacted
         assert res["entry"]["data"].get("password") != "secret_id"
+        assert res["entry"]["data"].get("refresh_token") != "secret_refresh_token"
+        assert res["entry"]["options"].get("card_number") != "secret_card_number"
