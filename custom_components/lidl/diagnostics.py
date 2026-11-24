@@ -17,9 +17,18 @@ TO_REDACT = {
     "refresh_token",
     "access_token",
     "id_token",
+    "authorization",
+    "secret",
     "session",
+    "cookie",
     "webhook_id",
     "card_number",
+    "email",
+    "username",
+    "phone",
+    "address",
+    "latitude",
+    "longitude",
 }
 
 
