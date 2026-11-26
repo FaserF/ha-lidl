@@ -66,9 +66,18 @@ _COUNTRY_TLD_OVERRIDES: dict[str, str] = {
     "GB": "com",
 }
 
+# Multilingual countries where users may pick a preferred UI/coupon language.
+MULTILINGUAL_COUNTRIES: dict[str, list[str]] = {
+    "BE": ["nl-BE", "fr-BE"],
+    "CH": ["de-CH", "fr-CH", "it-CH"],
+    "LU": ["fr-LU", "de-LU"],
+}
 
-def language_for_country(country: str) -> str:
+
+def language_for_country(country: str, preferred: str | None = None) -> str:
     """Return the Accept-Language / language tag for a Lidl Plus country code."""
+    if preferred and preferred.strip():
+        return preferred.strip()
     country_upper = country.upper()
     if country_upper in _COUNTRY_LANGUAGE_MAP:
         return _COUNTRY_LANGUAGE_MAP[country_upper]

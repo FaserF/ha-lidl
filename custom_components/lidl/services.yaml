@@ -1,0 +1,27 @@
+deactivate_coupon:
+  name: Deactivate Lidl Plus coupon
+  description: Deactivate a specific Lidl Plus coupon by ID.
+  fields:
+    coupon_id:
+      name: Coupon ID
+      description: The Lidl Plus coupon or promotion ID to deactivate.
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Config Entry ID
+      description: Optional Lidl config entry ID when multiple accounts are configured.
+      required: false
+      selector:
+        text:
+
+deactivate_all_coupons:
+  name: Deactivate all Lidl Plus coupons
+  description: Deactivate all currently active Lidl Plus coupons for the configured account.
+  fields:
+    entry_id:
+      name: Config Entry ID
+      description: Optional Lidl config entry ID when multiple accounts are configured.
+      required: false
+      selector:
+        text:

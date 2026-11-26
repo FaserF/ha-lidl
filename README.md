@@ -47,8 +47,9 @@ It groups all sensors under a single market device and implements advanced lock-
   - **Offers Preview**: Next week's upcoming deals.
 - **🔐 Lidl Plus Features** *(requires login)*:
   - **Loyalty Card QR Code Image (`image`)**: A dynamic 300x300 PNG QR Code entity rendering your 17-digit barcode for scanning directly at the checkout. Includes state attributes for your full profile (`user_name`, `email`, `country`, `registration_date`).
-  - **Activated & Available Coupons**: Sensors for currently active and available coupons, broken down by store vs. online shop coupons.
-  - **Activate All Coupons**: A button entity to activate every available coupon with a single tap.
+  - **Activated & Available Coupons**: Sensors for currently active and available coupons, broken down by store vs. online shop coupons. Store-scoped `store-id` / `Segment-ids` headers and local-store filtering ensure only eligible coupons are activated.
+  - **Activate & Deactivate Coupons**: Button entities (`Activate All Coupons`, `Deactivate All Coupons`) plus `lidl.deactivate_coupon` and `lidl.deactivate_all_coupons` services.
+  - **Multilingual Region Support**: Configurable language selection (`nl-BE`/`fr-BE`, `de-CH`/`fr-CH`/`it-CH`, `fr-LU`/`de-LU`) in integration options.
   - **Last Receipt**: Shows total amount, date, store code, article count, and redeemed coupon counts.
   - **All receipts**: Returns a list of receipt ids for all receipts on an account.
   - **Receipt Details Endpoint**: Make an API request to ```/api/lidl/{{entryId}}/receipts/{{receiptId}}``` to get the receipt details as json. enrtyId is the id of the entity in HomeAssistant.

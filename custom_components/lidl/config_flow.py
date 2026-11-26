@@ -23,6 +23,7 @@ from .const import (
     CONF_CARD_NUMBER,
     CONF_COUNTRY,
     CONF_FILTER_LOCAL_STORE,
+    CONF_LANGUAGE,
     CONF_PRODUCT_FILTERS,
     CONF_REFRESH_TOKEN,
     CONF_SKIP_SPECIAL_COUPONS,
@@ -32,6 +33,7 @@ from .const import (
     DOMAIN,
     MAX_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL,
+    MULTILINGUAL_COUNTRIES,
     language_for_country,
 )
 
@@ -665,26 +667,35 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 product_filters = [
                     str(f).strip() for f in product_filters_input if str(f).strip()
                 ]
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
-                    CONF_PRODUCT_FILTERS: product_filters,
-                    CONF_AUTO_ACTIVATE_COUPONS: bool(
-                        user_input.get(CONF_AUTO_ACTIVATE_COUPONS, False)
-                    ),
-                    CONF_SKIP_SPECIAL_COUPONS: bool(
-                        user_input.get(CONF_SKIP_SPECIAL_COUPONS, True)
-                    ),
-                    CONF_FILTER_LOCAL_STORE: bool(
-                        user_input.get(CONF_FILTER_LOCAL_STORE, False)
-                    ),
-                    CONF_CARD_NUMBER: str(user_input.get(CONF_CARD_NUMBER, "")).strip(),
-                },
-            )
+            options_data: dict[str, Any] = {
+                CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
+                CONF_PRODUCT_FILTERS: product_filters,
+                CONF_AUTO_ACTIVATE_COUPONS: bool(
+                    user_input.get(CONF_AUTO_ACTIVATE_COUPONS, False)
+                ),
+                CONF_SKIP_SPECIAL_COUPONS: bool(
+                    user_input.get(CONF_SKIP_SPECIAL_COUPONS, True)
+                ),
+                CONF_FILTER_LOCAL_STORE: bool(
+                    user_input.get(CONF_FILTER_LOCAL_STORE, False)
+                ),
+                CONF_CARD_NUMBER: str(user_input.get(CONF_CARD_NUMBER, "")).strip(),
+            }
+            selected_lang = str(
+                user_input.get(
+                    CONF_LANGUAGE,
+                    self._config_entry.options.get(CONF_LANGUAGE, ""),
+                )
+            ).strip()
+            if selected_lang:
+                options_data[CONF_LANGUAGE] = selected_lang
+            return self.async_create_entry(title="", data=options_data)
 
         current_interval = self._config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+        )
+        current_language = self._config_entry.options.get(
+            CONF_LANGUAGE, language_for_country(self._selected_country)
         )
         current_product_filters = self._config_entry.options.get(
             CONF_PRODUCT_FILTERS, []
@@ -734,6 +745,12 @@ class LidlOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
         }
+
+        country_langs = MULTILINGUAL_COUNTRIES.get(self._selected_country.upper())
+        if country_langs:
+            schema_dict[vol.Optional(CONF_LANGUAGE, default=current_language)] = vol.In(
+                country_langs
+            )
 
         if is_logged_in:
             schema_dict[vol.Optional(CONF_CARD_NUMBER, default=current_card_number)] = (

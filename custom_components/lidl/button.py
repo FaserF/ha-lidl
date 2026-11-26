@@ -36,6 +36,7 @@ async def async_setup_entry(
         ):
             account_buttons_dict[coordinator.account_key] = entry.entry_id
             entities.append(LidlActivateCouponsButton(coordinator))
+            entities.append(LidlDeactivateCouponsButton(coordinator))
 
     async_add_entities(entities, update_before_add=False)
 
@@ -99,5 +100,40 @@ class LidlActivateCouponsButton(ButtonEntity):
         failed = result.get("failed", 0)
         _LOGGER.info("Activated %d Lidl Plus coupons (failed: %d)", count, failed)
         # Refresh to update coupon sensor state
+        self.coordinator.force_update()
+        await self.coordinator.async_request_refresh()
+
+
+class LidlDeactivateCouponsButton(ButtonEntity):
+    """Button to deactivate all activated Lidl Plus coupons."""
+
+    _attr_icon = "mdi:ticket-outline"
+    _attr_has_entity_name = True
+    _attr_name = "Deactivate All Coupons"
+
+    def __init__(self, coordinator: LidlDataUpdateCoordinator) -> None:
+        """Initialize the button."""
+        self.coordinator = coordinator
+        self._account_key = coordinator.account_key
+        self._attr_unique_id = f"lidl_{self._account_key}_deactivate_coupons"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._account_key)},
+            name=f"Lidl Plus Account ({coordinator.country})",
+            manufacturer="Lidl",
+            model="Lidl Plus Customer Account",
+            configuration_url=coordinator.account_configuration_url,
+        )
+
+    async def async_press(self) -> None:
+        """Deactivate all activated Lidl Plus coupons."""
+        _LOGGER.info(
+            "Deactivating all Lidl Plus coupons for account %s...", self._account_key
+        )
+        count = await self.coordinator.hass.async_add_executor_job(
+            self.coordinator.deactivate_all_coupons
+        )
+        result = self.coordinator.last_deactivation_result
+        failed = result.get("failed", 0)
+        _LOGGER.info("Deactivated %d Lidl Plus coupons (failed: %d)", count, failed)
         self.coordinator.force_update()
         await self.coordinator.async_request_refresh()

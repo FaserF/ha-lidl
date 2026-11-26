@@ -7,6 +7,7 @@ import math
 import re
 from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries, core
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -272,7 +273,67 @@ async def async_setup_entry(
         hass.http.register_view(LidlReceiptView(hass))
         hass.data[DOMAIN]["_receipt_view_registered"] = True
 
+    _register_services(hass)
+
     return True
+
+
+def _resolve_target_coordinators(
+    hass: core.HomeAssistant, entry_id: str | None
+) -> list[LidlDataUpdateCoordinator]:
+    """Return matching LidlDataUpdateCoordinator instances for service calls."""
+    domain_data = hass.data.get(DOMAIN, {})
+    if entry_id:
+        coord = domain_data.get(entry_id)
+        return [coord] if isinstance(coord, LidlDataUpdateCoordinator) else []
+    seen_accounts: set[str] = set()
+    coordinators: list[LidlDataUpdateCoordinator] = []
+    for val in domain_data.values():
+        if isinstance(val, LidlDataUpdateCoordinator) and val.refresh_token:
+            if val.account_key not in seen_accounts:
+                seen_accounts.add(val.account_key)
+                coordinators.append(val)
+    return coordinators
+
+
+def _register_services(hass: core.HomeAssistant) -> None:
+    """Register Lidl Plus coupon deactivation services idempotently."""
+
+    async def _handle_deactivate_coupon(call: core.ServiceCall) -> None:
+        coupon_id = str(call.data["coupon_id"]).strip()
+        entry_id = call.data.get("entry_id")
+        for coord in _resolve_target_coordinators(hass, entry_id):
+            ok = await hass.async_add_executor_job(coord.deactivate_coupon, coupon_id)
+            if ok:
+                coord.force_update()
+                await coord.async_request_refresh()
+
+    async def _handle_deactivate_all_coupons(call: core.ServiceCall) -> None:
+        entry_id = call.data.get("entry_id")
+        for coord in _resolve_target_coordinators(hass, entry_id):
+            await hass.async_add_executor_job(coord.deactivate_all_coupons)
+            coord.force_update()
+            await coord.async_request_refresh()
+
+    if not hass.services.has_service(DOMAIN, "deactivate_coupon"):
+        hass.services.async_register(
+            DOMAIN,
+            "deactivate_coupon",
+            _handle_deactivate_coupon,
+            schema=vol.Schema(
+                {
+                    vol.Required("coupon_id"): cv.string,
+                    vol.Optional("entry_id"): cv.string,
+                }
+            ),
+        )
+    if not hass.services.has_service(DOMAIN, "deactivate_all_coupons"):
+        hass.services.async_register(
+            DOMAIN,
+            "deactivate_all_coupons",
+            _handle_deactivate_all_coupons,
+            schema=vol.Schema({vol.Optional("entry_id"): cv.string}),
+        )
 
 
 async def _async_update_options(
@@ -336,5 +397,12 @@ async def async_unload_entry(
                     mapping.pop(account_key, None)
                 elif isinstance(mapping, set):
                     mapping.discard(account_key)
+        if not any(
+            isinstance(v, LidlDataUpdateCoordinator)
+            for v in hass.data.get(DOMAIN, {}).values()
+        ):
+            for svc in ("deactivate_coupon", "deactivate_all_coupons"):
+                if hass.services.has_service(DOMAIN, svc):
+                    hass.services.async_remove(DOMAIN, svc)
     _LOGGER.debug("Unload result for Lidl entry %s: %s", entry.entry_id, unload_ok)
     return unload_ok
